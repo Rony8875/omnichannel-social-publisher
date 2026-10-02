@@ -52,7 +52,7 @@ interface MetaConfig {
   ratePerMessageINR: number;
 }
 
-const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:5001";
+// WhatsApp Engine proxy URL is managed dynamically inside MultiTenantWhatsAppSystem
 
 export default function MultiTenantWhatsAppSystem() {
   // Authentication State
@@ -102,6 +102,9 @@ export default function MultiTenantWhatsAppSystem() {
   // SIM Sessions from private WhatsApp server
   const [sessions, setSessions] = useState<SIMSession[]>([]);
   const [isServerOnline, setIsServerOnline] = useState<boolean>(true);
+  const [engineUrl, setEngineUrl] = useState<string>("http://localhost:5001");
+  const [showEngineModal, setShowEngineModal] = useState<boolean>(false);
+  const [engineInputUrl, setEngineInputUrl] = useState<string>("");
 
   // Link SIM Modal
   const [showAddSimModal, setShowAddSimModal] = useState<boolean>(false);
@@ -183,10 +186,41 @@ export default function MultiTenantWhatsAppSystem() {
     }
   }, [currentUser]);
 
+  // Initialize engineUrl from localStorage or auto-detect
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("custom_wa_engine_url");
+      if (saved) {
+        setEngineUrl(saved);
+        setEngineInputUrl(saved);
+      } else {
+        const hostname = window.location.hostname;
+        if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1" && !hostname.includes("vercel.app")) {
+          const autoUrl = `http://${hostname}:5001`;
+          setEngineUrl(autoUrl);
+          setEngineInputUrl(autoUrl);
+        } else {
+          const fallback = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:5001";
+          setEngineUrl(fallback);
+          setEngineInputUrl(fallback);
+        }
+      }
+    }
+  }, []);
+
+  const getEngineApiUrl = (endpoint: string) => {
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+    const cleanEngine = engineUrl.trim();
+    if (cleanEngine && cleanEngine !== "http://localhost:5001") {
+      return `/api/wa/${cleanEndpoint}?engineUrl=${encodeURIComponent(cleanEngine)}`;
+    }
+    return `/api/wa/${cleanEndpoint}`;
+  };
+
   // Fetch active sessions from Baileys engine
   const fetchSessions = async () => {
     try {
-      const res = await fetch(`${ENGINE_URL}/api/sessions`);
+      const res = await fetch(getEngineApiUrl("sessions"));
       if (res.ok) {
         const data = await res.json();
         setSessions(data.sessions || []);
@@ -208,6 +242,8 @@ export default function MultiTenantWhatsAppSystem() {
             }
           }
         }
+      } else {
+        setIsServerOnline(false);
       }
     } catch (err) {
       setIsServerOnline(false);
@@ -218,7 +254,7 @@ export default function MultiTenantWhatsAppSystem() {
     fetchSessions();
     const interval = setInterval(fetchSessions, 2500);
     return () => clearInterval(interval);
-  }, [activeSessionId]);
+  }, [activeSessionId, engineUrl]);
 
   // --- SAVE META CREDENTIALS ---
   const handleSaveMetaConfig = async (e: React.FormEvent) => {
@@ -400,7 +436,7 @@ export default function MultiTenantWhatsAppSystem() {
     const sessionId = `sim_${Date.now()}`;
 
     try {
-      const res = await fetch(`${ENGINE_URL}/api/sessions/create-pairing`, {
+      const res = await fetch(getEngineApiUrl("sessions/create-pairing"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -431,7 +467,7 @@ export default function MultiTenantWhatsAppSystem() {
     const sessionId = `sim_${Date.now()}`;
 
     try {
-      const res = await fetch(`${ENGINE_URL}/api/sessions/create`, {
+      const res = await fetch(getEngineApiUrl("sessions/create"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, label }),
@@ -454,7 +490,7 @@ export default function MultiTenantWhatsAppSystem() {
   const handleDeleteSession = async (id: string) => {
     if (confirm("Disconnect this SIM?")) {
       try {
-        await fetch(`${ENGINE_URL}/api/sessions/${id}`, { method: "DELETE" });
+        await fetch(getEngineApiUrl(`sessions/${id}`), { method: "DELETE" });
         fetchSessions();
       } catch (err) {
         console.error(err);
@@ -720,7 +756,7 @@ export default function MultiTenantWhatsAppSystem() {
     ]);
 
     try {
-      const response = await fetch(`${ENGINE_URL}/api/sessions/send-bulk`, {
+      const response = await fetch(getEngineApiUrl("sessions/send-bulk"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1527,6 +1563,106 @@ export default function MultiTenantWhatsAppSystem() {
         </div>
       )}
 
+      {/* WHATSAPP ENGINE CONFIGURATION MODAL */}
+      {showEngineModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>📡</span> WhatsApp Engine Server Setup
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Mobile aur Vercel se WhatsApp Engine connect karne ke liye
+                </p>
+              </div>
+              <button
+                onClick={() => setShowEngineModal(false)}
+                className="text-slate-400 hover:text-white text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Active WhatsApp Engine URL:
+                </label>
+                <input
+                  type="text"
+                  value={engineInputUrl}
+                  onChange={(e) => setEngineInputUrl(e.target.value)}
+                  placeholder="http://192.168.1.6:5001 ya https://xyz.localtunnel.me"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="space-y-2">
+                <span className="text-[11px] text-slate-400 font-medium">Quick Presets:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEngineInputUrl("http://localhost:5001")}
+                    className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition cursor-pointer"
+                  >
+                    <div className="text-xs font-bold text-white">💻 Laptop Localhost</div>
+                    <div className="text-[10px] text-slate-400 font-mono">http://localhost:5001</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+                        setEngineInputUrl(`http://${window.location.hostname}:5001`);
+                      } else {
+                        setEngineInputUrl("http://192.168.1.6:5001");
+                      }
+                    }}
+                    className="p-2.5 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-800/60 text-left transition cursor-pointer"
+                  >
+                    <div className="text-xs font-bold text-cyan-300">📱 Mobile Wi-Fi (Same Network)</div>
+                    <div className="text-[10px] text-cyan-400/80 font-mono">http://192.168.1.6:5001</div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1 leading-relaxed">
+                <p className="font-semibold text-slate-300">💡 Mobile & Vercel Guide:</p>
+                <p>• <strong>Same Wi-Fi par Mobile:</strong> Laptop ka Wi-Fi IP <code className="text-cyan-400 font-mono">http://192.168.1.6:5001</code> use karein.</p>
+                <p>• <strong>Vercel (Internet):</strong> Terminal me <code className="text-emerald-400 font-mono">npx localtunnel --port 5001</code> chala kar jo HTTPS link mile use yahan paste karein.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEngineModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cleaned = engineInputUrl.trim() || "http://localhost:5001";
+                  setEngineUrl(cleaned);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("custom_wa_engine_url", cleaned);
+                  }
+                  setShowEngineModal(false);
+                  setTimeout(fetchSessions, 100);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs font-bold cursor-pointer shadow-lg"
+              >
+                Save & Connect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* =========================================================================
           SUB-VIEW A: ADMIN USER MANAGEMENT (Only for Admin)
           ========================================================================= */}
@@ -1813,42 +1949,124 @@ export default function MultiTenantWhatsAppSystem() {
                 </div>
               </div>
             ) : (
-              <div className="pt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <div className="text-[11px] text-slate-400">📱 Connected SIMs:</div>
-                  <div className="text-base font-bold text-cyan-400 font-mono mt-0.5">
-                    {connectedSIMs.length} Active in Rotation
+              <>
+                <div className="pt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
+                    <div className="text-[11px] text-slate-400">📱 Connected SIMs:</div>
+                    <div className="text-base font-bold text-cyan-400 font-mono mt-0.5">
+                      {connectedSIMs.length} Active in Rotation
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
+                    <div className="text-[11px] text-slate-400">⚡ Engine Cost:</div>
+                    <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
+                      100% Free Forever
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
+                    <div className="text-[11px] text-slate-400">Safe Capacity:</div>
+                    <div className="text-base font-bold text-white font-mono mt-0.5">
+                      ~{connectedSIMs.length * 200} msgs/day
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setShowAddSimModal(true);
+                        setActiveQR(null);
+                        setActivePairingCode(null);
+                        setNewSimLabel(`SIM ${sessions.length + 1}`);
+                      }}
+                      className="flex-1 py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                    >
+                      <span>+ Link SIM (OTP/QR)</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEngineInputUrl(engineUrl);
+                        setShowEngineModal(true);
+                      }}
+                      title="Configure WhatsApp Engine URL (WiFi / Tunnel / Localhost)"
+                      className="py-3 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer shadow-sm"
+                    >
+                      <span>📡</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <div className="text-[11px] text-slate-400">⚡ Engine Cost:</div>
-                  <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
-                    100% Free Forever
+                {/* Active SIMs List & Server Connection Bar */}
+                <div className="mt-4 pt-3 border-t border-slate-800/80">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-300">Live SIM Devices:</span>
+                      <span className="text-[11px] text-slate-500">
+                        ({connectedSIMs.length} connected)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px]">
+                        <span className={`w-2 h-2 rounded-full ${isServerOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`}></span>
+                        <span className="text-slate-400 font-mono">Engine: {engineUrl.replace("http://", "").replace("https://", "")}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setEngineInputUrl(engineUrl);
+                          setShowEngineModal(true);
+                        }}
+                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                      >
+                        ⚙️ Change Engine URL
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <div className="text-[11px] text-slate-400">Safe Capacity:</div>
-                  <div className="text-base font-bold text-white font-mono mt-0.5">
-                    ~{connectedSIMs.length * 200} msgs/day
-                  </div>
+                  {sessions.length === 0 ? (
+                    <div className="p-3 bg-slate-950/60 border border-dashed border-slate-800 rounded-xl text-center text-xs text-slate-500">
+                      Koi SIM connected nahi hai. "+ Link SIM (OTP/QR)" par click karke apna WhatsApp number jodein.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {sessions.map((sim) => (
+                        <div
+                          key={sim.id}
+                          className={`p-3 rounded-xl border flex items-center justify-between ${
+                            sim.status === "CONNECTED"
+                              ? "bg-emerald-950/20 border-emerald-800/50"
+                              : "bg-slate-950 border-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                              sim.status === "CONNECTED" ? "bg-emerald-600/30 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-400"
+                            }`}>
+                              📱
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                                <span>{sim.label}</span>
+                                <span className={`w-1.5 h-1.5 rounded-full ${sim.status === "CONNECTED" ? "bg-emerald-400" : "bg-amber-400"}`}></span>
+                              </div>
+                              <div className="text-[11px] text-cyan-400 font-mono truncate">
+                                {sim.userPhone ? `+${sim.userPhone}` : sim.status}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteSession(sim.id)}
+                            title="Disconnect SIM"
+                            className="px-2 py-1 bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800/50 text-rose-300 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                          >
+                            Disconnect
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setShowAddSimModal(true);
-                      setActiveQR(null);
-                      setActivePairingCode(null);
-                      setNewSimLabel(`SIM ${sessions.length + 1}`);
-                    }}
-                    className="flex-1 py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <span>+ Link SIM (OTP/QR)</span>
-                  </button>
-                </div>
-              </div>
+              </>
             )}
           </div>
 
