@@ -432,21 +432,6 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
     }
   };
 
-  // Quick Demo Auto-fill Credentials for instant test
-  const handleQuickDemoFill = () => {
-    const handleMap: { [k: string]: string } = {
-      facebook: "sharma.trading.fb@gmail.com",
-      instagram: "sharma_official_insta",
-      linkedin: "sharma.corp.linkedin@gmail.com",
-      twitter: "@SharmaHQ",
-      telegram: "+918875216646",
-      whatsapp: "+918875216646",
-    };
-    setLoginIdInput(handleMap[loginModalAccount?.id || ""] || "business@gmail.com");
-    setPasswordInput("AdminPass@2026");
-    setLoginError("");
-  };
-
   // Test Real Connection Handshake / Diagnostics
   const handleTestConnection = async (accountId: string) => {
     setTestingAccountId(accountId);
@@ -1688,35 +1673,16 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
                   type="text"
                   value={loginIdInput}
                   onChange={(e) => setLoginIdInput(e.target.value)}
-                  placeholder={
-                    loginModalAccount.id === "facebook"
-                      ? "sharma.trading.fb@gmail.com"
-                      : loginModalAccount.id === "instagram"
-                      ? "sharma_official_insta"
-                      : loginModalAccount.id === "linkedin"
-                      ? "sharma.corp@gmail.com"
-                      : loginModalAccount.id === "twitter"
-                      ? "@SharmaOfficialHQ"
-                      : "+919876543210"
-                  }
+                  placeholder="Enter account handle, email or phone"
                   required
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
                 />
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] text-slate-300 font-semibold">
-                    Account Password:
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleQuickDemoFill}
-                    className="text-[10px] text-amber-400 hover:text-amber-300 underline font-medium cursor-pointer"
-                  >
-                    ⚡ Auto-Fill Demo Credentials
-                  </button>
-                </div>
+                <label className="text-[11px] text-slate-300 font-semibold block mb-1">
+                  Account Password:
+                </label>
                 <input
                   type="password"
                   value={passwordInput}

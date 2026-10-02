@@ -7,20 +7,8 @@
       "handle": "@8875216646",
       "connected": false,
       "icon": "facebook",
-      "followers": "12.4K",
-      "pageId": "10982736451",
-      "token": "oauth_token_QDg4NzUyMTY2NDYxNzkwOTM4",
-      "verifiedAt": "2026-10-02T10:55:25.421Z",
-      "diagnosticReport": {
-        "accountId": "facebook",
-        "platformName": "Facebook Business Page",
-        "handle": "@8875216646",
-        "isLive": false,
-        "status": "LOCAL_SANDBOX",
-        "details": "Credentials saved as @8875216646. Dhyan de: Meta (Facebook/Instagram) policy direct password accept nahi karti (Phishing protection). Live Facebook page par real post karne ke liye official 'Login with Facebook' (Meta OAuth) approval zaroori hota hai.",
-        "pingMs": 44,
-        "checkedAt": "2026-10-02T10:53:14.396Z"
-      }
+      "pageId": "",
+      "token": ""
     },
     {
       "id": "instagram",
@@ -29,42 +17,27 @@
       "handle": "@kkrstudy",
       "connected": false,
       "icon": "instagram",
-      "followers": "28.9K",
-      "accountId": "1784140029384",
-      "token": "oauth_token_QGtrcnN0dWR5MTc5MDkzODkx",
-      "verifiedAt": "2026-10-02T11:01:59.296Z",
-      "diagnosticReport": {
-        "accountId": "instagram",
-        "platformName": "Instagram Business",
-        "handle": "@kkrstudy",
-        "isLive": false,
-        "status": "LOCAL_SANDBOX",
-        "details": "Credentials saved as @kkrstudy. Dhyan de: Meta (Facebook/Instagram) policy direct password accept nahi karti (Phishing protection). Live Facebook page par real post karne ke liye official 'Login with Facebook' (Meta OAuth) approval zaroori hota hai.",
-        "pingMs": 60,
-        "checkedAt": "2026-10-02T10:55:41.329Z"
-      }
+      "accountId": "",
+      "token": ""
     },
     {
       "id": "linkedin",
       "platform": "LinkedIn",
       "name": "LinkedIn Company Page",
-      "handle": "@admin",
+      "handle": "",
       "connected": false,
       "icon": "linkedin",
-      "followers": "5.6K",
-      "orgId": "urn:li:organization:98765432",
-      "token": "oauth_token_YWRtaW4xNzkwOTM4NDA5MTQx",
-      "verifiedAt": "2026-10-02T10:53:29.141Z"
+      "orgId": "",
+      "token": ""
     },
     {
       "id": "twitter",
       "platform": "X / Twitter",
       "name": "X (Twitter) Profile",
-      "handle": "@MyBusinessHQ",
-      "connected": true,
+      "handle": "",
+      "connected": false,
       "icon": "twitter",
-      "followers": "18.2K",
-      "apiKey": "x_api_key_demo"
+      "apiKey": ""
     },
     {
       "id": "whatsapp",
@@ -72,30 +45,17 @@
       "name": "WhatsApp Status & Broadcast",
       "handle": "+91 88752 16646",
       "connected": true,
-      "icon": "whatsapp",
-      "followers": "1.2K Contacts",
-      "diagnosticReport": {
-        "accountId": "whatsapp",
-        "platformName": "WhatsApp Status & Broadcast",
-        "handle": "+91 88752 16646",
-        "isLive": true,
-        "status": "LIVE_ACTIVE",
-        "details": "WhatsApp Live Session Active! Connected to Phone: 918875216646. Real broadcasts ready.",
-        "pingMs": 38,
-        "checkedAt": "2026-10-02T10:53:18.992Z"
-      }
+      "icon": "whatsapp"
     },
     {
       "id": "telegram",
       "platform": "Telegram",
       "name": "Telegram Announcement Channel",
-      "handle": "@+918875216646",
+      "handle": "+91 88752 16646",
       "connected": false,
       "icon": "telegram",
-      "channelId": "@my_channel",
-      "botToken": "",
-      "verifiedAt": "2026-10-02T10:48:56.229Z",
-      "token": "oauth_token_KzkxODg3NTIxNjY0NjE3OTA5"
+      "channelId": "",
+      "botToken": ""
     }
   ]
 }

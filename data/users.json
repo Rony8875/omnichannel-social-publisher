@@ -5,29 +5,9 @@
     "username": "admin",
     "password": "admin123",
     "role": "admin",
-    "credits": 1009999,
+    "credits": 1000000,
     "sentCount": 0,
     "createdAt": "2026-10-01"
-  },
-  {
-    "id": "user_1",
-    "name": "Rahul Sharma (VIP Client)",
-    "username": "rahul",
-    "password": "user123",
-    "role": "user",
-    "credits": 50000,
-    "sentCount": 0,
-    "createdAt": "2026-10-02"
-  },
-  {
-    "id": "user_2",
-    "name": "Pooja Marketing Agency",
-    "username": "pooja",
-    "password": "user123",
-    "role": "user",
-    "credits": 25000,
-    "sentCount": 0,
-    "createdAt": "2026-10-02"
   },
   {
     "id": "user_1790932542146",
@@ -35,8 +15,8 @@
     "username": "user",
     "password": "123",
     "role": "user",
-    "credits": 199,
-    "sentCount": 1,
+    "credits": 5000,
+    "sentCount": 0,
     "createdAt": "2026-10-02"
   }
 ]

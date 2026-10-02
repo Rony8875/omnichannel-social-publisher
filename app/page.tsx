@@ -57,8 +57,8 @@ const ENGINE_URL = "http://localhost:5001";
 export default function MultiTenantWhatsAppSystem() {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [loginUsername, setLoginUsername] = useState<string>("admin");
-  const [loginPassword, setLoginPassword] = useState<string>("admin123");
+  const [loginUsername, setLoginUsername] = useState<string>("");
+  const [loginPassword, setLoginPassword] = useState<string>("");
   const [loginError, setLoginError] = useState<string>("");
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
@@ -302,11 +302,6 @@ export default function MultiTenantWhatsAppSystem() {
     setCurrentUser(null);
     localStorage.removeItem("whatsapp_saas_user");
     setLoginError("");
-  };
-
-  const handleQuickDemoLogin = (uname: string, pword: string) => {
-    setLoginUsername(uname);
-    setLoginPassword(pword);
   };
 
   // --- ADMIN: CREATE NEW USER ---
@@ -853,36 +848,6 @@ export default function MultiTenantWhatsAppSystem() {
               {isLoggingIn ? "Logging in..." : "Login to Portal"}
             </button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-slate-800 text-center">
-            <span className="text-[11px] text-slate-400 block mb-2.5">Instant Testing Accounts:</span>
-            <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin("admin", "admin123")}
-                className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-amber-400 rounded-lg text-xs font-mono transition text-left flex justify-between cursor-pointer"
-              >
-                <span>👑 Super Admin</span>
-                <span className="text-slate-500">admin / admin123</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin("user", "123")}
-                className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-emerald-400 rounded-lg text-xs font-mono transition text-left flex justify-between cursor-pointer"
-              >
-                <span>👤 Satyam (User)</span>
-                <span className="text-slate-500">user / 123</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin("rahul", "user123")}
-                className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-cyan-400 rounded-lg text-xs font-mono transition text-left flex justify-between cursor-pointer"
-              >
-                <span>👤 Rahul Sharma</span>
-                <span className="text-slate-500">50k Credits</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     );
