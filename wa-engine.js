@@ -261,20 +261,32 @@ app.delete('/api/sessions/:id', async (req, res) => {
 // Send Bulk Messages across all connected SIM sessions (Round-Robin)
 app.post('/api/sessions/send-bulk', async (req, res) => {
   try {
-    const { recipients, message, attachment } = req.body;
+    const { recipients, message, attachment, selectedSimId } = req.body;
 
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
       return res.status(400).json({ success: false, error: 'Recipients list is required.' });
     }
 
-    const connectedSessions = [];
-    for (const sess of sessions.values()) {
-      if (sess.status === 'CONNECTED' && sess.sock) {
-        connectedSessions.push(sess);
+    let targetPool = [];
+    if (selectedSimId && selectedSimId !== 'random') {
+      const specific = sessions.get(selectedSimId);
+      if (specific && specific.status === 'CONNECTED' && specific.sock) {
+        targetPool = [specific];
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: `Selected SIM (${selectedSimId}) connected ya active nahi hai! Kripya dusri SIM chunein ya Random option use karein.`,
+        });
+      }
+    } else {
+      for (const sess of sessions.values()) {
+        if (sess.status === 'CONNECTED' && sess.sock) {
+          targetPool.push(sess);
+        }
       }
     }
 
-    if (connectedSessions.length === 0) {
+    if (targetPool.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'Koi bhi SIM connected nahi hai! Pehle QR ya Pairing Code se kam se kam 1 SIM connect karein.',
@@ -287,7 +299,7 @@ app.post('/api/sessions/send-bulk', async (req, res) => {
       const phone = recipients[i];
       const jid = formatToJid(String(phone));
 
-      const assignedSession = connectedSessions[i % connectedSessions.length];
+      const assignedSession = targetPool[i % targetPool.length];
 
       try {
         let sentMsg;
