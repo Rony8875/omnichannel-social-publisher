@@ -1,0 +1,9 @@
+{
+  "accessToken": "",
+  "phoneNumberId": "",
+  "wabaId": "",
+  "freeTierTotal": 1000,
+  "freeTierUsed": 0,
+  "currentTierLimit": 250,
+  "ratePerMessageINR": 0.85
+}
