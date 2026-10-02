@@ -132,7 +132,8 @@ export default function PlatformOAuthPage() {
       let isMounted = true;
       const fetchWaStatus = async () => {
         try {
-          const res = await fetch("http://localhost:5001/api/sessions");
+          const waEngineUrl = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:5001";
+          const res = await fetch(`${waEngineUrl}/api/sessions`);
           const data = await res.json();
           if (data.sessions && isMounted) {
             const connected = data.sessions.find((s: any) => s.status === "CONNECTED");

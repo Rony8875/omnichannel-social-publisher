@@ -80,7 +80,8 @@ export async function POST(request: Request) {
 
       if (targetAccount.id === "whatsapp") {
         try {
-          const waRes = await fetch("http://localhost:5001/api/sessions");
+          const waEngineUrl = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:5001";
+          const waRes = await fetch(`${waEngineUrl}/api/sessions`);
           const waData = await waRes.json();
           const connectedSess = waData.sessions?.find((s: any) => s.status === "CONNECTED");
           if (connectedSess) {

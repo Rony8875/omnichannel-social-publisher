@@ -52,7 +52,7 @@ interface MetaConfig {
   ratePerMessageINR: number;
 }
 
-const ENGINE_URL = "http://localhost:5001";
+const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:5001";
 
 export default function MultiTenantWhatsAppSystem() {
   // Authentication State
