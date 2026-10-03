@@ -138,11 +138,6 @@ export default function MultiTenantWhatsAppSystem() {
   // Sending SIM Selection: 'random' (Round-Robin) or specific SIM id
   const [selectedDispatchSim, setSelectedDispatchSim] = useState<string>("random");
 
-  // Mode: "bulk" (Multiple / Excel contacts) or "single" (Instant 1-to-1 message)
-  const [dispatchType, setDispatchType] = useState<"bulk" | "single">("bulk");
-  const [singleRecipientPhone, setSingleRecipientPhone] = useState<string>("");
-  const [singleRecipientName, setSingleRecipientName] = useState<string>("");
-
   // Check saved session in localStorage
   useEffect(() => {
     const saved = localStorage.getItem("whatsapp_saas_user");
@@ -838,96 +833,7 @@ export default function MultiTenantWhatsAppSystem() {
     }
   };
 
-  // --- SEND SINGLE INSTANT 1-TO-1 MESSAGE ---
-  const handleSendSingleMessage = async () => {
-    if (!currentUser) return;
-    const cleanPhone = singleRecipientPhone.trim().replace(/[^0-9]/g, "");
-    if (!cleanPhone || cleanPhone.length < 10) {
-      alert("Kripya valid 10-digit mobile number enter karein!");
-      return;
-    }
-    if (!messageText.trim() && !attachment) {
-      alert("Kripya message text ya attachment add karein!");
-      return;
-    }
-    if (currentUser.role !== "admin" && currentUser.credits < 1) {
-      alert("Aapke paas credits khatam ho gaye hain! Kripya admin se recharge karwayen.");
-      return;
-    }
 
-    if (engineMode === "sim" && connectedSIMs.length === 0) {
-      alert("Server par koi SIM connected nahi hai! Kripya pehle SIM link karein.");
-      return;
-    }
-
-    setIsSending(true);
-    const finalMsg = messageText.replace(/{Name}/g, singleRecipientName.trim() || "Customer");
-    setServerLogs([`[${new Date().toLocaleTimeString()}] Sending instant 1-to-1 message to +${cleanPhone}...`]);
-
-    try {
-      if (engineMode === "meta") {
-        const metaRes = await fetch("/api/meta/send-bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipients: [{ id: 1, name: singleRecipientName.trim() || "Customer", phone: cleanPhone }],
-            messageText: finalMsg,
-          }),
-        });
-        const metaData = await metaRes.json();
-        if (!metaRes.ok || !metaData.success) {
-          throw new Error(metaData.error || "Meta dispatch failed");
-        }
-        alert(`🎉 Message Delivered via Meta Cloud API to +${cleanPhone}!`);
-        setServerLogs((prev) => [`✅ [${new Date().toLocaleTimeString()}] Delivered via Meta Cloud API!`, ...prev]);
-        setSingleRecipientPhone("");
-        setSingleRecipientName("");
-      } else {
-        const response = await fetch(getEngineApiUrl("sessions/send-bulk"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipients: [cleanPhone],
-            message: finalMsg,
-            attachment: attachment ? { name: attachment.name, type: attachment.type, dataUrl: attachment.dataUrl } : null,
-            selectedSimId: selectedDispatchSim,
-          }),
-        });
-
-        const resData = await response.json();
-        if (!response.ok || !resData.success) {
-          throw new Error(resData.error || "Sending failed");
-        }
-
-        const result = resData.results?.[0];
-        if (result && result.status === "SUCCESS") {
-          setServerLogs((prev) => [
-            `✅ [${new Date().toLocaleTimeString()}] Delivered to +${cleanPhone} via ${result.fromSIM} (${result.fromPhone})!`,
-            ...prev,
-          ]);
-          alert(`🎉 Instant WhatsApp Message Delivered to +${cleanPhone} from ${result.fromSIM}!`);
-          setSingleRecipientPhone("");
-          setSingleRecipientName("");
-
-          if (currentUser.role !== "admin") {
-            await fetch("/api/user/deduct-credits", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userId: currentUser.id, amount: 1 }),
-            });
-            setCurrentUser((prev) => prev ? { ...prev, credits: Math.max(0, prev.credits - 1), sentCount: prev.sentCount + 1 } : null);
-          }
-        } else {
-          alert(`Failed to send message: ${result?.error || "Unknown error"}`);
-        }
-      }
-      fetchSessions();
-    } catch (err: any) {
-      alert(`Error sending message: ${err.message}`);
-    } finally {
-      setIsSending(false);
-    }
-  };
 
   // =========================================================================
   // VIEW 1: LOGIN PAGE
@@ -2175,153 +2081,75 @@ export default function MultiTenantWhatsAppSystem() {
             {/* Left Column: Target Contacts */}
             <section className="lg:col-span-5 flex flex-col gap-6">
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl">
-                {/* Mode Switcher: Bulk Campaign vs Quick 1-to-1 */}
-                <div className="flex bg-slate-950 p-1.5 rounded-2xl mb-4 border border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xs font-bold">
+                      2
+                    </span>
+                    Target Contacts ({recipients.length})
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleLoadDemoContacts}
+                      className="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer underline"
+                    >
+                      + 3 Demo Numbers
+                    </button>
+                    {recipients.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setRecipients([])}
+                        className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 mb-2">
+                  💡 Hint: Direct number paste karein ya Excel sheet upload karein (1 line me 1 number):
+                </p>
+
+                <textarea
+                  rows={3}
+                  placeholder="8875216646&#10;Rahul, 9057588165"
+                  value={directPasteInput}
+                  onChange={(e) => setDirectPasteInput(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                ></textarea>
+
+                <div className="flex gap-2 mt-2">
                   <button
                     type="button"
-                    onClick={() => setDispatchType("bulk")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                      dispatchType === "bulk"
-                        ? "bg-cyan-600 text-white shadow-md"
-                        : "text-slate-400 hover:text-white"
-                    }`}
+                    onClick={handleAddDirectPasted}
+                    className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-xl transition cursor-pointer shadow-md"
                   >
-                    <span>📢 Bulk Campaign</span>
-                    <span className="text-[10px] bg-cyan-950 text-cyan-300 px-1.5 py-0.5 rounded-md font-mono">
-                      {recipients.length}
-                    </span>
+                    + Add Pasted Numbers
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDispatchType("single")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                      dispatchType === "single"
-                        ? "bg-emerald-600 text-white shadow-md"
-                        : "text-slate-400 hover:text-white"
-                    }`}
+                    onClick={handleDownloadSampleExcel}
+                    className="px-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold rounded-xl transition cursor-pointer"
                   >
-                    <span>⚡ Quick 1-to-1</span>
-                    <span className="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
-                      Instant
-                    </span>
+                    📥 Sample .xlsx
                   </button>
                 </div>
 
-                {dispatchType === "single" ? (
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>📱</span> Recipient Mobile Number:
-                        </label>
-                        <span className="text-[10px] text-emerald-400 font-mono">10-Digit Mobile</span>
-                      </div>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-mono font-bold">+91</span>
-                        <input
-                          type="tel"
-                          placeholder="e.g. 9876543210"
-                          value={singleRecipientPhone}
-                          onChange={(e) => setSingleRecipientPhone(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-3 py-2 text-xs text-cyan-300 font-mono font-bold focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1.5">
-                        Customer Name (Optional for {`{Name}`} tag):
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Rahul Sharma"
-                        value={singleRecipientName}
-                        onChange={(e) => setSingleRecipientName(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1.5">
-                      <div className="text-emerald-400 font-bold flex items-center gap-1.5">
-                        <span>✨</span> Quick 1-to-1 Dispatch Active:
-                      </div>
-                      <p>Number ko contact list me save karne ki zarurat nahi hai. Single click me direct WhatsApp par deliver hoga.</p>
-                      <p className="text-slate-500">Aap niche se specific SIM choose kar sakte hain ya random rotation use kar sakte hain.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h2 className="text-base font-bold text-white flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xs font-bold">
-                          2
-                        </span>
-                        Target Contacts ({recipients.length})
-                      </h2>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleLoadDemoContacts}
-                          className="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer underline"
-                        >
-                          + 3 Demo Numbers
-                        </button>
-                        {recipients.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setRecipients([])}
-                            className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="text-[11px] text-slate-400 mb-2">
-                      💡 Hint: Direct number paste karein ya Excel sheet upload karein (1 line me 1 number):
-                    </p>
-
-                    <textarea
-                      rows={3}
-                      placeholder="8875216646&#10;Rahul, 9057588165"
-                      value={directPasteInput}
-                      onChange={(e) => setDirectPasteInput(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
-                    ></textarea>
-
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        type="button"
-                        onClick={handleAddDirectPasted}
-                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-xl transition cursor-pointer shadow-md"
-                      >
-                        + Add Pasted Numbers
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDownloadSampleExcel}
-                        className="px-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold rounded-xl transition cursor-pointer"
-                      >
-                        📥 Sample .xlsx
-                      </button>
-                    </div>
-
-                    <div className="mt-3 pt-3 border-t border-slate-800">
-                      <label className="w-full flex items-center justify-center p-2.5 border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl cursor-pointer bg-slate-950/60 transition group">
-                        <span className="text-xs text-slate-300 group-hover:text-cyan-400 font-medium">
-                          {fileName ? `File: ${fileName}` : "📊 Or Upload .xlsx Sheet"}
-                        </span>
-                        <input
-                          type="file"
-                          accept=".xlsx, .xls, .csv"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                )}
+                <div className="mt-3 pt-3 border-t border-slate-800">
+                  <label className="w-full flex items-center justify-center p-2.5 border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl cursor-pointer bg-slate-950/60 transition group">
+                    <span className="text-xs text-slate-300 group-hover:text-cyan-400 font-medium">
+                      {fileName ? `File: ${fileName}` : "📊 Or Upload .xlsx Sheet"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls, .csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
             </section>
 
@@ -2514,125 +2342,79 @@ export default function MultiTenantWhatsAppSystem() {
                   </div>
                 )}
 
-                {dispatchType === "single" ? (
-                  <div className="flex-1 flex flex-col justify-center mb-4">
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                      <div>
-                        <div className="text-[11px] text-slate-400">Target Single Recipient:</div>
-                        <div className="text-base font-bold text-cyan-300 font-mono mt-0.5">
-                          {singleRecipientPhone ? `+91 ${singleRecipientPhone}` : "Mobile number enter karein"}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          Name: {singleRecipientName || "Customer"} • Cost: 1 Credit
-                        </div>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        ⚡ Ready to Send
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-white">Contacts Queue</h3>
-                      <span className="text-xs text-emerald-400 font-mono">
-                        Cost: {recipients.length} Credits
-                      </span>
-                    </div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-white">Contacts Queue</h3>
+                  <span className="text-xs text-emerald-400 font-mono">
+                    Cost: {recipients.length} Credits
+                  </span>
+                </div>
 
-                    <div className="overflow-x-auto flex-1 max-h-[160px] overflow-y-auto mb-4">
-                      <table className="w-full text-left text-xs">
-                        <thead className="text-[11px] text-slate-400 uppercase bg-slate-950/60 sticky top-0 border-b border-slate-800">
-                          <tr>
-                            <th className="py-2 px-3">#</th>
-                            <th className="py-2 px-3">Name</th>
-                            <th className="py-2 px-3">Number</th>
-                            <th className="py-2 px-3">Status</th>
+                <div className="overflow-x-auto flex-1 max-h-[160px] overflow-y-auto mb-4">
+                  <table className="w-full text-left text-xs">
+                    <thead className="text-[11px] text-slate-400 uppercase bg-slate-950/60 sticky top-0 border-b border-slate-800">
+                      <tr>
+                        <th className="py-2 px-3">#</th>
+                        <th className="py-2 px-3">Name</th>
+                        <th className="py-2 px-3">Number</th>
+                        <th className="py-2 px-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {recipients.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-4 text-center text-slate-500">
+                            Koi contact nahi hai. Excel upload ya numbers paste karein.
+                          </td>
+                        </tr>
+                      ) : (
+                        recipients.map((r, idx) => (
+                          <tr key={r.id} className="hover:bg-slate-800/40 transition">
+                            <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
+                            <td className="py-2 px-3 text-slate-200">{r.name}</td>
+                            <td className="py-2 px-3 font-mono text-cyan-400">{r.phone}</td>
+                            <td className="py-2 px-3">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  r.status === "Sent"
+                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                    : r.status === "Failed"
+                                    ? "bg-rose-500/20 text-rose-400"
+                                    : "bg-slate-800 text-slate-400"
+                                }`}
+                              >
+                                {r.status === "Sent" ? `Sent (${r.messageId?.slice(0, 12)}...)` : r.status}
+                              </span>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {recipients.length === 0 ? (
-                            <tr>
-                              <td colSpan={4} className="py-4 text-center text-slate-500">
-                                Koi contact nahi hai. Excel upload ya numbers paste karein.
-                              </td>
-                            </tr>
-                          ) : (
-                            recipients.map((r, idx) => (
-                              <tr key={r.id} className="hover:bg-slate-800/40 transition">
-                                <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
-                                <td className="py-2 px-3 text-slate-200">{r.name}</td>
-                                <td className="py-2 px-3 font-mono text-cyan-400">{r.phone}</td>
-                                <td className="py-2 px-3">
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                      r.status === "Sent"
-                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                        : r.status === "Failed"
-                                        ? "bg-rose-500/20 text-rose-400"
-                                        : "bg-slate-800 text-slate-400"
-                                    }`}
-                                  >
-                                    {r.status === "Sent" ? `Sent (${r.messageId?.slice(0, 12)}...)` : r.status}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
                 {/* The Big Send Button */}
-                {dispatchType === "single" ? (
-                  <button
-                    onClick={handleSendSingleMessage}
-                    disabled={isSending || !singleRecipientPhone}
-                    className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xl ${
-                      isSending
-                        ? "bg-amber-600 text-white animate-pulse"
-                        : "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-emerald-950"
-                    }`}
-                  >
-                    {isSending ? (
-                      <span>Sending Instant Message...</span>
-                    ) : (
-                      <>
-                        <span>
-                          ⚡ Send Instant Message to +91 {singleRecipientPhone || "..."}
-                        </span>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleStartDispatch}
-                    disabled={isSending || recipients.length === 0}
-                    className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xl ${
-                      isSending
-                        ? "bg-amber-600 text-white animate-pulse"
-                        : "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-emerald-950"
-                    }`}
-                  >
-                    {isSending ? (
-                      <span>Dispatching via {engineMode === "meta" ? "Meta Cloud API" : "SIM Server"}...</span>
-                    ) : (
-                      <>
-                        <span>
-                          Send {recipients.length} Bulk Messages via {engineMode === "meta" ? "Official Meta Cloud API" : "Private SIM Server"}
-                        </span>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                      </>
-                    )}
-                  </button>
-                )}
+                <button
+                  onClick={handleStartDispatch}
+                  disabled={isSending || recipients.length === 0}
+                  className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xl ${
+                    isSending
+                      ? "bg-amber-600 text-white animate-pulse"
+                      : "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-emerald-950"
+                  }`}
+                >
+                  {isSending ? (
+                    <span>Dispatching via {engineMode === "meta" ? "Meta Cloud API" : "SIM Server"}...</span>
+                  ) : (
+                    <>
+                      <span>
+                        Send {recipients.length} Messages via {engineMode === "meta" ? "Official Meta Cloud API" : "Private SIM Server"}
+                      </span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </>
+                  )}
+                </button>
 
                 {/* Server Logs */}
                 {serverLogs.length > 0 && (
