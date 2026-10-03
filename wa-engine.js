@@ -24,7 +24,7 @@ if (!fs.existsSync(SESSIONS_DIR)) {
 // In-memory sessions store
 const sessions = new Map();
 
-async function initSession(sessionId, label = '', phoneNumberForPairing = null) {
+async function initSession(sessionId, label = '', phoneNumberForPairing = null, owner = 'admin') {
   if (sessions.has(sessionId)) {
     const existing = sessions.get(sessionId);
     if (existing.status === 'CONNECTED') {
@@ -39,14 +39,25 @@ async function initSession(sessionId, label = '', phoneNumberForPairing = null) 
   const sessionData = {
     id: sessionId,
     label: label || `SIM Instance ${sessions.size + 1}`,
+    owner: owner || 'admin',
     status: 'INITIALIZING',
     qrCode: null,
     pairingCode: null,
     userPhone: null,
     sentCount: 0,
     sock: null,
+    isExplicitlyDeleted: false,
   };
   sessions.set(sessionId, sessionData);
+
+  // Save session metadata (label & owner)
+  try {
+    fs.writeFileSync(
+      path.join(sessionPath, 'meta.json'),
+      JSON.stringify({ label: sessionData.label, owner: sessionData.owner }, null, 2),
+      'utf-8'
+    );
+  } catch (e) {}
 
   const sock = makeWASocket({
     version,
@@ -104,13 +115,22 @@ async function initSession(sessionId, label = '', phoneNumberForPairing = null) 
     }
 
     if (connection === 'close') {
+      if (sessionData.isExplicitlyDeleted) {
+        console.log(`[${sessionId}] 🛑 Session is explicitly deleted. Skipping reconnect.`);
+        return;
+      }
+
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       console.log(`[${sessionId}] Connection closed. StatusCode: ${statusCode}. Reconnect: ${shouldReconnect}`);
 
       if (shouldReconnect) {
         sessionData.status = 'RECONNECTING';
-        setTimeout(() => initSession(sessionId, sessionData.label), 3000);
+        setTimeout(() => {
+          if (!sessionData.isExplicitlyDeleted) {
+            initSession(sessionId, sessionData.label);
+          }
+        }, 3000);
       } else {
         sessionData.status = 'DISCONNECTED';
         try {
@@ -130,8 +150,26 @@ async function restoreSavedSessions() {
     const folders = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
     for (const folder of folders) {
       if (folder.isDirectory()) {
-        console.log(`Restoring session from folder: ${folder.name}`);
-        await initSession(folder.name, `SIM (${folder.name})`);
+        const credsPath = path.join(SESSIONS_DIR, folder.name, 'creds.json');
+        if (fs.existsSync(credsPath)) {
+          let label = `SIM (${folder.name})`;
+          let owner = 'admin';
+          const metaPath = path.join(SESSIONS_DIR, folder.name, 'meta.json');
+          if (fs.existsSync(metaPath)) {
+            try {
+              const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+              if (meta.label) label = meta.label;
+              if (meta.owner) owner = meta.owner;
+            } catch (e) {}
+          }
+          console.log(`Restoring valid session from folder: ${folder.name} (Owner: ${owner})`);
+          await initSession(folder.name, label, null, owner);
+        } else {
+          console.log(`Cleaning up stale/unlinked session folder: ${folder.name}`);
+          try {
+            fs.rmSync(path.join(SESSIONS_DIR, folder.name), { recursive: true, force: true });
+          } catch (e) {}
+        }
       }
     }
   } catch (err) {
@@ -166,6 +204,7 @@ app.get('/api/sessions', (req, res) => {
     list.push({
       id: sess.id,
       label: sess.label,
+      owner: sess.owner || 'admin',
       status: sess.status,
       userPhone: sess.userPhone,
       qrCode: sess.qrCode,
@@ -179,9 +218,9 @@ app.get('/api/sessions', (req, res) => {
 // Create session using QR Code
 app.post('/api/sessions/create', async (req, res) => {
   try {
-    const { sessionId, label } = req.body;
+    const { sessionId, label, owner } = req.body;
     const finalId = (sessionId || `sim_${Date.now()}`).trim();
-    const sess = await initSession(finalId, label);
+    const sess = await initSession(finalId, label, null, owner || 'admin');
 
     let retries = 0;
     while (!sess.qrCode && sess.status === 'INITIALIZING' && retries < 15) {
@@ -194,6 +233,7 @@ app.post('/api/sessions/create', async (req, res) => {
       session: {
         id: sess.id,
         label: sess.label,
+        owner: sess.owner,
         status: sess.status,
         userPhone: sess.userPhone,
         qrCode: sess.qrCode,
@@ -207,13 +247,13 @@ app.post('/api/sessions/create', async (req, res) => {
 // Create session using 8-digit Pairing Code (OTP / Number Linking)
 app.post('/api/sessions/create-pairing', async (req, res) => {
   try {
-    const { sessionId, label, phoneNumber } = req.body;
+    const { sessionId, label, phoneNumber, owner } = req.body;
     if (!phoneNumber) {
       return res.status(400).json({ success: false, error: 'Mobile number is required' });
     }
 
     const finalId = (sessionId || `sim_${Date.now()}`).trim();
-    const sess = await initSession(finalId, label, phoneNumber);
+    const sess = await initSession(finalId, label, phoneNumber, owner || 'admin');
 
     // Wait for pairing code generation
     let retries = 0;
@@ -226,6 +266,7 @@ app.post('/api/sessions/create-pairing', async (req, res) => {
       res.json({
         success: true,
         sessionId: sess.id,
+        owner: sess.owner,
         pairingCode: sess.pairingCode,
       });
     } else {
@@ -239,29 +280,57 @@ app.post('/api/sessions/create-pairing', async (req, res) => {
   }
 });
 
-// Delete / Logout session
+// Delete / Logout session permanently
 app.delete('/api/sessions/:id', async (req, res) => {
   const id = req.params.id;
+  console.log(`[${id}] 🛑 Disconnecting and permanently deleting session...`);
+
+  const sessionPath = path.join(SESSIONS_DIR, id);
+
   if (sessions.has(id)) {
     const sess = sessions.get(id);
+    sess.isExplicitlyDeleted = true;
+    sess.status = 'DISCONNECTED';
+
     try {
       if (sess.sock) {
+        sess.sock.ev.removeAllListeners('connection.update');
+        sess.sock.ev.removeAllListeners('creds.update');
+        await sess.sock.logout().catch(() => {});
         sess.sock.end();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error(`Error terminating socket for ${id}:`, e.message);
+    }
+
     sessions.delete(id);
-    const sessionPath = path.join(SESSIONS_DIR, id);
-    try {
-      fs.rmSync(sessionPath, { recursive: true, force: true });
-    } catch (e) {}
   }
-  res.json({ success: true, message: `Session ${id} removed` });
+
+  // Remove directory permanently from disk
+  try {
+    await new Promise((r) => setTimeout(r, 600));
+    if (fs.existsSync(sessionPath)) {
+      fs.rmSync(sessionPath, { recursive: true, force: true });
+    }
+    console.log(`[${id}] ✅ Folder permanently removed from disk.`);
+  } catch (err) {
+    console.error(`[${id}] Error deleting folder:`, err.message);
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(sessionPath)) {
+          fs.rmSync(sessionPath, { recursive: true, force: true });
+        }
+      } catch (e2) {}
+    }, 1200);
+  }
+
+  res.json({ success: true, message: `Session ${id} permanently removed` });
 });
 
-// Send Bulk Messages across all connected SIM sessions (Round-Robin)
+// Send Bulk Messages across connected SIM sessions (Round-Robin or Specific)
 app.post('/api/sessions/send-bulk', async (req, res) => {
   try {
-    const { recipients, message, attachment, selectedSimId } = req.body;
+    const { recipients, message, messages, attachment, selectedSimId, allowedSimIds } = req.body;
 
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
       return res.status(400).json({ success: false, error: 'Recipients list is required.' });
@@ -279,9 +348,12 @@ app.post('/api/sessions/send-bulk', async (req, res) => {
         });
       }
     } else {
+      const allowedSet = Array.isArray(allowedSimIds) && allowedSimIds.length > 0 ? new Set(allowedSimIds) : null;
       for (const sess of sessions.values()) {
         if (sess.status === 'CONNECTED' && sess.sock) {
-          targetPool.push(sess);
+          if (!allowedSet || allowedSet.has(sess.id)) {
+            targetPool.push(sess);
+          }
         }
       }
     }
@@ -289,17 +361,25 @@ app.post('/api/sessions/send-bulk', async (req, res) => {
     if (targetPool.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Koi bhi SIM connected nahi hai! Pehle QR ya Pairing Code se kam se kam 1 SIM connect karein.',
+        error: 'Aapke account par koi bhi SIM connected nahi hai! Pehle QR ya Pairing Code se apni SIM connect karein.',
       });
     }
 
     const results = [];
 
     for (let i = 0; i < recipients.length; i++) {
-      const phone = recipients[i];
+      const rawRecipient = recipients[i];
+      const phone = typeof rawRecipient === 'object' ? rawRecipient.phone : rawRecipient;
       const jid = formatToJid(String(phone));
 
       const assignedSession = targetPool[i % targetPool.length];
+
+      // Personalized message resolution
+      const personalizedMsg = (Array.isArray(messages) && messages[i])
+        ? messages[i]
+        : (typeof rawRecipient === 'object' && rawRecipient.message)
+          ? rawRecipient.message
+          : (message || '');
 
       try {
         let sentMsg;
@@ -310,24 +390,24 @@ app.post('/api/sessions/send-bulk', async (req, res) => {
           if (attachment.type === 'image') {
             sentMsg = await assignedSession.sock.sendMessage(jid, {
               image: buffer,
-              caption: message || '',
+              caption: personalizedMsg,
             });
           } else if (attachment.type === 'video') {
             sentMsg = await assignedSession.sock.sendMessage(jid, {
               video: buffer,
-              caption: message || '',
+              caption: personalizedMsg,
             });
           } else if (attachment.type === 'pdf') {
             sentMsg = await assignedSession.sock.sendMessage(jid, {
               document: buffer,
               mimetype: 'application/pdf',
               fileName: attachment.name || 'document.pdf',
-              caption: message || '',
+              caption: personalizedMsg,
             });
           }
         } else {
           sentMsg = await assignedSession.sock.sendMessage(jid, {
-            text: message || 'Hello!',
+            text: personalizedMsg,
           });
         }
 

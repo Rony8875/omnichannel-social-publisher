@@ -1,0 +1,23 @@
+[
+  {
+    "id": "tpl_festive",
+    "name": "Festive Offer Promotion",
+    "message": "🎉 Special Festive Offer! Dear {name}, enjoy up to 40% OFF on all services today. Reply here to claim your offer!",
+    "columns": [
+      "name"
+    ],
+    "createdBy": "admin",
+    "createdAt": "2026-10-03"
+  },
+  {
+    "id": "tpl_order_update",
+    "name": "Order Dispatch & Status",
+    "message": "📦 Order Update: Hello {name}, your order has been dispatched. Track details: {due date}. For assistance, reply to this message.",
+    "columns": [
+      "name",
+      "due date"
+    ],
+    "createdBy": "admin",
+    "createdAt": "2026-10-03"
+  }
+]

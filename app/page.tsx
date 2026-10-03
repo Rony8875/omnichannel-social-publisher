@@ -16,6 +16,7 @@ interface UserProfile {
 interface SIMSession {
   id: string;
   label: string;
+  owner?: string;
   status: "CONNECTED" | "SCAN_QR" | "ENTER_CODE" | "INITIALIZING" | "RECONNECTING" | "DISCONNECTED";
   userPhone: string | null;
   qrCode: string | null;
@@ -27,11 +28,21 @@ interface Recipient {
   id: number;
   name: string;
   phone: string;
+  customData?: Record<string, any>;
   status: "Pending" | "Sending" | "Sent" | "Failed";
   fromSIM?: string;
   fromPhone?: string;
   messageId?: string;
   error?: string;
+}
+
+interface MessageTemplate {
+  id: string;
+  name: string;
+  message: string;
+  columns?: string[];
+  createdBy?: string;
+  createdAt?: string;
 }
 
 interface AttachmentFile {
@@ -52,7 +63,98 @@ interface MetaConfig {
   ratePerMessageINR: number;
 }
 
-// WhatsApp Engine proxy URL is managed dynamically inside MultiTenantWhatsAppSystem
+// =========================================================================
+// BRAND LOGO: ANANT REACH (Infinity + Multi-Channel Broadcast Pulse)
+// =========================================================================
+function AnantReachLogo({
+  size = "md",
+  showSubtitle = true,
+}: {
+  size?: "sm" | "md" | "lg";
+  showSubtitle?: boolean;
+}) {
+  const isLg = size === "lg";
+  const isSm = size === "sm";
+
+  return (
+    <div className={`flex items-center ${isLg ? "flex-col text-center gap-3.5" : "gap-3"}`}>
+      {/* Icon Squircle Badge with Ambient Glow */}
+      <div
+        className={`relative rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950/60 border border-emerald-500/30 flex items-center justify-center shadow-xl shadow-emerald-950/50 group hover:border-emerald-400/60 transition duration-300 shrink-0 ${
+          isLg ? "w-16 h-16" : isSm ? "w-8 h-8" : "w-11 h-11"
+        }`}
+      >
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-emerald-500/10 via-cyan-500/10 to-transparent pointer-events-none"></div>
+
+        <svg
+          className={isLg ? "w-9 h-9" : isSm ? "w-5 h-5" : "w-6 h-6"}
+          viewBox="0 0 40 40"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id={`anantGrad-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#10B981" />
+              <stop offset="50%" stopColor="#06B6D4" />
+              <stop offset="100%" stopColor="#6366F1" />
+            </linearGradient>
+            <filter id={`anantGlow-${size}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Infinity Loop (Anant / Limitless) */}
+          <path
+            d="M13 25C9.68629 25 7 22.3137 7 19C7 15.6863 9.68629 13 13 13C17.5 13 22.5 25 27 25C30.3137 25 33 22.3137 33 19C33 15.6863 30.3137 13 27 13C22.5 13 17.5 25 13 25Z"
+            stroke={`url(#anantGrad-${size})`}
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter={`url(#anantGlow-${size})`}
+          />
+
+          {/* Broadcast Reach Wave */}
+          <path
+            d="M24 9.5C28 10.8 31.2 14 32.5 18"
+            stroke="#06B6D4"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            opacity="0.9"
+          />
+
+          {/* Interconnected Broadcast Nodes */}
+          <circle cx="13" cy="19" r="2.2" fill="#10B981" />
+          <circle cx="20" cy="19" r="2.2" fill="#06B6D4" />
+          <circle cx="27" cy="19" r="2.2" fill="#818CF8" />
+        </svg>
+      </div>
+
+      {/* Typography */}
+      <div>
+        <div
+          className={`leading-none flex items-center ${
+            isLg ? "justify-center text-3xl font-black" : isSm ? "text-sm font-bold" : "text-lg font-extrabold"
+          } tracking-tight`}
+        >
+          <span className="text-white">Anant</span>
+          <span className="ml-1.5 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+            Reach
+          </span>
+        </div>
+        {showSubtitle && (
+          <div
+            className={`text-[10px] tracking-wider text-slate-400 uppercase font-semibold mt-1 ${
+              isLg ? "text-center" : ""
+            }`}
+          >
+            Omni-Channel Engine
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function MultiTenantWhatsAppSystem() {
   // Authentication State
@@ -103,8 +205,6 @@ export default function MultiTenantWhatsAppSystem() {
   const [sessions, setSessions] = useState<SIMSession[]>([]);
   const [isServerOnline, setIsServerOnline] = useState<boolean>(true);
   const [engineUrl, setEngineUrl] = useState<string>("http://localhost:5001");
-  const [showEngineModal, setShowEngineModal] = useState<boolean>(false);
-  const [engineInputUrl, setEngineInputUrl] = useState<string>("");
 
   // Link SIM Modal
   const [showAddSimModal, setShowAddSimModal] = useState<boolean>(false);
@@ -117,12 +217,10 @@ export default function MultiTenantWhatsAppSystem() {
   const [isGeneratingLink, setIsGeneratingLink] = useState<boolean>(false);
 
   // Campaign Contacts State
-  const [recipients, setRecipients] = useState<Recipient[]>([
-    { id: 1, name: "Test Contact", phone: "8875216646", status: "Pending" },
-    { id: 2, name: "Second Contact", phone: "9057588165", status: "Pending" },
-  ]);
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [directPasteInput, setDirectPasteInput] = useState<string>("");
   const [fileName, setFileName] = useState<string>("");
+  const [numbersFeedback, setNumbersFeedback] = useState<string>("");
 
   // Message & Attachment
   const [messageText, setMessageText] = useState<string>(
@@ -131,12 +229,59 @@ export default function MultiTenantWhatsAppSystem() {
   const [attachment, setAttachment] = useState<AttachmentFile | null>(null);
   const [uploadError, setUploadError] = useState<string>("");
 
+  // Message Templates State
+  const [savedTemplates, setSavedTemplates] = useState<MessageTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState<boolean>(false);
+  const [newTemplateName, setNewTemplateName] = useState<string>("");
+  const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false);
+  const [detectedVariables, setDetectedVariables] = useState<string[]>([]);
+
   // Dispatch progress
   const [isSending, setIsSending] = useState<boolean>(false);
   const [serverLogs, setServerLogs] = useState<string[]>([]);
 
   // Sending SIM Selection: 'random' (Round-Robin) or specific SIM id
   const [selectedDispatchSim, setSelectedDispatchSim] = useState<string>("random");
+
+  // Mobile PWA App Installation States
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
+  const [isMobileUser, setIsMobileUser] = useState<boolean>(false);
+  const [showMobileBanner, setShowMobileBanner] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const ua = navigator.userAgent || "";
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+      setIsMobileUser(isMobile);
+
+      const handleBeforeInstall = (e: any) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+      };
+
+      window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+      return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+    }
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice && choice.outcome === "accepted") {
+          setDeferredPrompt(null);
+          setShowMobileBanner(false);
+        }
+      } catch (e) {
+        setShowInstallGuideModal(true);
+      }
+    } else {
+      setShowInstallGuideModal(true);
+    }
+  };
 
   // Check saved session in localStorage
   useEffect(() => {
@@ -195,17 +340,14 @@ export default function MultiTenantWhatsAppSystem() {
       const saved = localStorage.getItem("custom_wa_engine_url");
       if (saved) {
         setEngineUrl(saved);
-        setEngineInputUrl(saved);
       } else {
         const hostname = window.location.hostname;
         if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1" && !hostname.includes("vercel.app")) {
           const autoUrl = `http://${hostname}:5001`;
           setEngineUrl(autoUrl);
-          setEngineInputUrl(autoUrl);
         } else {
           const fallback = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:5001";
           setEngineUrl(fallback);
-          setEngineInputUrl(fallback);
         }
       }
     }
@@ -446,6 +588,7 @@ export default function MultiTenantWhatsAppSystem() {
           sessionId,
           label,
           phoneNumber: newSimPhone.trim(),
+          owner: currentUser?.username || "admin",
         }),
       });
 
@@ -473,7 +616,11 @@ export default function MultiTenantWhatsAppSystem() {
       const res = await fetch(getEngineApiUrl("sessions/create"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, label }),
+        body: JSON.stringify({
+          sessionId,
+          label,
+          owner: currentUser?.username || "admin",
+        }),
       });
 
       const data = await res.json();
@@ -501,54 +648,158 @@ export default function MultiTenantWhatsAppSystem() {
     }
   };
 
-  // --- RECIPIENTS & ATTACHMENTS ---
-  const handleAddDirectPasted = () => {
-    if (!directPasteInput.trim()) return;
+  // --- SMART MOBILE NUMBER PARSER & VALIDATOR (10-Digit Enforcement, Auto-Shift, De-duplicate, Purge <10) ---
+  const parseAndCleanMobileNumbers = (raw: string) => {
+    const tokens = raw.split(/[\r\n,;\t ]+/);
+    const seen = new Set<string>();
+    let duplicateCount = 0;
+    let invalidCount = 0;
 
-    const lines = directPasteInput.split("\n");
-    const newItems: Recipient[] = [];
+    tokens.forEach((token) => {
+      const digits = token.replace(/\D/g, "");
+      if (!digits) return;
 
-    lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
+      const chunks =
+        digits.length > 12 && !digits.startsWith("91")
+          ? (digits.match(/.{1,10}/g) || [])
+          : [digits];
 
-      let name = "";
-      let phone = "";
+      chunks.forEach((chunk) => {
+        let clean = chunk;
+        if (clean.startsWith("91") && clean.length === 12) {
+          clean = clean.slice(2);
+        } else if (clean.startsWith("0") && clean.length === 11) {
+          clean = clean.slice(1);
+        }
 
-      if (trimmed.includes("\t")) {
-        const parts = trimmed.split("\t");
-        name = parts[0]?.trim();
-        phone = parts[1]?.trim() || parts[0]?.trim();
-      } else if (trimmed.includes(",")) {
-        const parts = trimmed.split(",");
-        name = parts[0]?.trim();
-        phone = parts[1]?.trim() || parts[0]?.trim();
-      } else {
-        phone = trimmed;
-      }
-
-      const cleanPhone = phone.replace(/[^0-9]/g, "");
-
-      if (cleanPhone.length >= 7) {
-        newItems.push({
-          id: Date.now() + Math.random(),
-          name: name && name !== phone ? name : `Customer ${recipients.length + newItems.length + 1}`,
-          phone: cleanPhone,
-          status: "Pending",
-        });
-      }
+        if (clean.length === 10) {
+          if (seen.has(clean)) {
+            duplicateCount++;
+          } else {
+            seen.add(clean);
+          }
+        } else {
+          invalidCount++;
+        }
+      });
     });
 
-    setRecipients((prev) => [...prev, ...newItems]);
-    setDirectPasteInput("");
+    const uniqueNumbers = Array.from(seen);
+    return {
+      cleanedText: uniqueNumbers.join("\n"),
+      uniqueNumbers,
+      duplicateCount,
+      invalidCount,
+    };
   };
 
-  const handleLoadDemoContacts = () => {
-    setRecipients([
-      { id: 1, name: "Satyam Sharma", phone: "8875216646", status: "Pending" },
-      { id: 2, name: "Rahul Verma", phone: "9057588165", status: "Pending" },
-      { id: 3, name: "Pooja Patel", phone: "9876543210", status: "Pending" },
-    ]);
+  const syncRecipients = (phoneNumbers: string[]) => {
+    const list: Recipient[] = phoneNumbers.map((phone, idx) => ({
+      id: Date.now() + idx + Math.random(),
+      name: `Customer ${idx + 1}`,
+      phone: phone,
+      status: "Pending",
+    }));
+    setRecipients(list);
+  };
+
+  const handleNumberInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    const sanitized = val.replace(/[^0-9\n]/g, "");
+
+    const lines = sanitized.split("\n");
+    const processedLines: string[] = [];
+    const seen = new Set<string>();
+    let duplicateFound = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i].replace(/\D/g, "");
+
+      if (line.length >= 10) {
+        if (line.startsWith("91") && line.length === 12) line = line.slice(2);
+        if (line.startsWith("0") && line.length === 11) line = line.slice(1);
+
+        if (line.length > 10) {
+          const chunks = line.match(/.{1,10}/g) || [];
+          chunks.forEach((c, cIdx) => {
+            if (c.length === 10) {
+              if (!seen.has(c)) {
+                seen.add(c);
+                processedLines.push(c);
+              } else {
+                duplicateFound = true;
+              }
+            } else if (i === lines.length - 1 && cIdx === chunks.length - 1) {
+              processedLines.push(c);
+            }
+          });
+          continue;
+        }
+
+        if (seen.has(line)) {
+          duplicateFound = true;
+          continue;
+        }
+
+        seen.add(line);
+        processedLines.push(line);
+
+        if (i === lines.length - 1) {
+          processedLines.push("");
+        }
+      } else {
+        if (i === lines.length - 1) {
+          processedLines.push(line);
+        }
+      }
+    }
+
+    const newText = processedLines.join("\n");
+    setDirectPasteInput(newText);
+
+    const validList = Array.from(seen);
+    syncRecipients(validList);
+
+    if (duplicateFound) {
+      setNumbersFeedback("⚡ Duplicate number auto-removed");
+    } else if (validList.length > 0) {
+      setNumbersFeedback(`✅ ${validList.length} Mobile Number(s) Active`);
+    } else {
+      setNumbersFeedback("");
+    }
+  };
+
+  const handleNumberPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData("text");
+    const combined = (directPasteInput ? directPasteInput + "\n" : "") + pastedText;
+    const { cleanedText, uniqueNumbers, duplicateCount, invalidCount } = parseAndCleanMobileNumbers(combined);
+
+    setDirectPasteInput(cleanedText ? cleanedText + "\n" : "");
+    syncRecipients(uniqueNumbers);
+
+    let msg = `✨ Pasted: ${uniqueNumbers.length} Valid 10-Digit Number(s)`;
+    if (duplicateCount > 0) msg += ` | 🗑️ ${duplicateCount} Duplicate Auto-Removed`;
+    if (invalidCount > 0) msg += ` | ❌ ${invalidCount} Incomplete (<10 digits) Auto-Deleted`;
+    setNumbersFeedback(msg);
+  };
+
+  const handleNumberInputBlur = () => {
+    if (!directPasteInput.trim()) {
+      setDirectPasteInput("");
+      setRecipients([]);
+      setNumbersFeedback("");
+      return;
+    }
+
+    const { cleanedText, uniqueNumbers, duplicateCount, invalidCount } = parseAndCleanMobileNumbers(directPasteInput);
+    setDirectPasteInput(cleanedText);
+    syncRecipients(uniqueNumbers);
+
+    let msg = `✨ Cleaned: ${uniqueNumbers.length} Valid 10-Digit Number(s)`;
+    if (duplicateCount > 0) msg += ` | 🗑️ ${duplicateCount} Duplicate Removed`;
+    if (invalidCount > 0) msg += ` | ❌ ${invalidCount} Incomplete (<10 digits) Deleted`;
+    setNumbersFeedback(msg);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -566,9 +817,46 @@ export default function MultiTenantWhatsAppSystem() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json<any>(ws);
 
-        const mapped: Recipient[] = data.map((row, index) => {
-          const name = row.Name || row.name || row["Customer Name"] || row["Customer"] || `Customer ${index + 1}`;
+        if (!data || data.length === 0) {
+          alert("Excel file empty hai!");
+          return;
+        }
+
+        // Auto detect dynamic column headers freshly from this uploaded Excel file only
+        const detectedColsSet = new Set<string>();
+        data.forEach((row: any) => {
+          Object.keys(row).forEach((k) => {
+            const trimmed = k.trim();
+            const lower = trimmed.toLowerCase();
+            const isPhone = [
+              "phone",
+              "mobile",
+              "mob no",
+              "mob_no",
+              "contact",
+              "number",
+              "phone number",
+              "mobile number",
+              "ph",
+              "cell",
+            ].includes(lower);
+            if (trimmed && !isPhone) {
+              detectedColsSet.add(trimmed);
+            }
+          });
+        });
+        setDetectedVariables(Array.from(detectedColsSet));
+
+        const mapped: Recipient[] = [];
+        const seenPhones = new Set<string>();
+        let duplicateCount = 0;
+        let invalidCount = 0;
+
+        data.forEach((row: any, index: number) => {
           let phone =
+            row["Mob No"] ||
+            row["mob no"] ||
+            row["MOB NO"] ||
             row.Phone ||
             row.phone ||
             row.Mobile ||
@@ -576,19 +864,45 @@ export default function MultiTenantWhatsAppSystem() {
             row["Phone Number"] ||
             row["Mobile Number"] ||
             row["Contact"] ||
+            row["Number"] ||
             "";
 
-          phone = String(phone).replace(/[^0-9]/g, "");
+          let digits = String(phone).replace(/\D/g, "");
+          if (digits.startsWith("91") && digits.length === 12) digits = digits.slice(2);
+          if (digits.startsWith("0") && digits.length === 11) digits = digits.slice(1);
 
-          return {
-            id: Date.now() + index,
-            name: String(name),
-            phone: phone,
-            status: "Pending",
-          };
+          if (digits.length === 10) {
+            if (seenPhones.has(digits)) {
+              duplicateCount++;
+            } else {
+              seenPhones.add(digits);
+              const name =
+                row.name ||
+                row.Name ||
+                row["Customer Name"] ||
+                row["Customer"] ||
+                `Customer ${index + 1}`;
+
+              mapped.push({
+                id: Date.now() + index + Math.random(),
+                name: String(name),
+                phone: digits,
+                customData: row,
+                status: "Pending",
+              });
+            }
+          } else if (digits) {
+            invalidCount++;
+          }
         });
 
         setRecipients(mapped);
+        setDirectPasteInput(mapped.map((r) => r.phone).join("\n"));
+
+        let msg = `📊 Excel Loaded: ${mapped.length} Valid 10-Digit Contacts`;
+        if (duplicateCount > 0) msg += ` | 🗑️ ${duplicateCount} Duplicates Auto-Removed`;
+        if (invalidCount > 0) msg += ` | ❌ ${invalidCount} Incomplete (<10 digits) Auto-Deleted`;
+        setNumbersFeedback(msg);
       } catch (err) {
         alert("File parse nahi ho saki. Valid .xlsx ya .csv file upload karein.");
       }
@@ -599,14 +913,33 @@ export default function MultiTenantWhatsAppSystem() {
 
   const handleDownloadSampleExcel = () => {
     const sampleData = [
-      { "Customer Name": "Rahul Sharma", "Mobile Number": "918875216646", "Amount": "1500" },
-      { "Customer Name": "Pooja Verma", "Mobile Number": "919057588165", "Amount": "2400" },
+      {
+        "Mob No": "8875216646",
+        "name": "Rahul Sharma",
+        "Os pending": "₹12,500",
+        "due date": "15-Oct-2026",
+        "aging": "45 Days",
+      },
+      {
+        "Mob No": "9057588165",
+        "name": "Pooja Verma",
+        "Os pending": "₹5,200",
+        "due date": "20-Oct-2026",
+        "aging": "15 Days",
+      },
+      {
+        "Mob No": "9876543210",
+        "name": "Amit Kumar",
+        "Os pending": "₹8,900",
+        "due date": "25-Oct-2026",
+        "aging": "30 Days",
+      },
     ];
 
     const ws = XLSX.utils.json_to_sheet(sampleData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Contacts");
-    XLSX.writeFile(wb, "bulk_whatsapp_sample.xlsx");
+    XLSX.writeFile(wb, "bulk_contacts_sample.xlsx");
   };
 
   const handleSelectAttachment = (type: "image" | "video" | "pdf", file: File | undefined) => {
@@ -638,8 +971,104 @@ export default function MultiTenantWhatsAppSystem() {
     reader.readAsDataURL(file);
   };
 
+  // --- TEMPLATES HANDLERS ---
+  const fetchTemplates = async () => {
+    try {
+      const userParam = currentUser?.username || "admin";
+      const res = await fetch(`/api/templates?user=${encodeURIComponent(userParam)}`);
+      const data = await res.json();
+      if (data.success && data.templates) {
+        setSavedTemplates(data.templates);
+        if (!selectedTemplateId && data.templates.length > 0) {
+          setSelectedTemplateId(data.templates[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching templates", err);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchTemplates();
+    }
+  }, [currentUser]);
+
+  const handleSelectTemplate = (tplId: string) => {
+    setSelectedTemplateId(tplId);
+    const found = savedTemplates.find((t) => t.id === tplId);
+    if (found) {
+      setMessageText(found.message);
+    }
+  };
+
+  const handleSaveCurrentTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplateName.trim()) {
+      alert("Template name enter karein");
+      return;
+    }
+
+    setIsSavingTemplate(true);
+    try {
+      const res = await fetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newTemplateName.trim(),
+          message: messageText,
+          columns: detectedVariables,
+          createdBy: currentUser?.username || "admin",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.template) {
+        setSavedTemplates((prev) => [data.template, ...prev]);
+        setSelectedTemplateId(data.template.id);
+        setShowSaveTemplateModal(false);
+        setNewTemplateName("");
+        alert(`✅ Template "${data.template.name}" successfully save ho gaya!`);
+      } else {
+        alert(data.error || "Template save nahi ho saka");
+      }
+    } catch (err: any) {
+      alert(`Error saving template: ${err.message}`);
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (tplId: string, tplName: string) => {
+    if (confirm(`Kya aap template "${tplName}" ko delete karna chahte hain?`)) {
+      try {
+        const res = await fetch(`/api/templates?id=${tplId}`, { method: "DELETE" });
+        const data = await res.json();
+        if (data.success) {
+          setSavedTemplates((prev) => prev.filter((t) => t.id !== tplId));
+          if (selectedTemplateId === tplId) setSelectedTemplateId("");
+        } else {
+          alert(data.error);
+        }
+      } catch (err: any) {
+        alert(`Error deleting template: ${err.message}`);
+      }
+    }
+  };
+
+  const handleInsertVariable = (varName: string) => {
+    const placeholder = `{${varName}}`;
+    setMessageText((prev) => (prev ? prev + " " + placeholder : placeholder));
+  };
+
   // --- DISPATCH CAMPAIGN (DUAL MODE: META CLOUD API OR PRIVATE SIMs) ---
-  const connectedSIMs = sessions.filter((s) => s.status === "CONNECTED");
+  // User-Specific SIM Isolation: Admin sees all, Client only sees SIMs they linked
+  const userVisibleSessions =
+    currentUser?.role === "admin"
+      ? sessions
+      : sessions.filter((s) => (s.owner || "admin") === currentUser?.username);
+
+  const connectedSIMs = userVisibleSessions.filter((s) => s.status === "CONNECTED");
 
   const handleStartDispatch = async () => {
     if (!currentUser) return;
@@ -658,6 +1087,25 @@ export default function MultiTenantWhatsAppSystem() {
 
     setIsSending(true);
 
+    // Generate personalized messages for each contact (replaces {name}, {os pending}, {due date}, etc.)
+    const personalizedMessages = recipients.map((r) => {
+      let text = messageText;
+      text = text.replace(/{([^}]+)}/g, (match, key) => {
+        const trimmed = key.trim().toLowerCase();
+        if (r.customData) {
+          for (const col of Object.keys(r.customData)) {
+            if (col.trim().toLowerCase() === trimmed) {
+              return String(r.customData[col] ?? "");
+            }
+          }
+        }
+        if (trimmed === "name") return r.name;
+        if (trimmed === "phone" || trimmed === "mobile" || trimmed === "mob no") return r.phone;
+        return match;
+      });
+      return text;
+    });
+
     // ==========================================
     // CASE A: OFFICIAL META CLOUD API DISPATCH
     // ==========================================
@@ -674,6 +1122,7 @@ export default function MultiTenantWhatsAppSystem() {
           body: JSON.stringify({
             recipients: recipients.map((r) => r.phone),
             message: messageText,
+            messages: personalizedMessages,
           }),
         });
 
@@ -749,13 +1198,13 @@ export default function MultiTenantWhatsAppSystem() {
     // CASE B: PRIVATE SIM SERVER DISPATCH
     // ==========================================
     if (connectedSIMs.length === 0) {
-      alert("Server par koi SIM connected nahi hai! Admin ko boliye ki SIM link karein.");
+      alert("Aapke account par koi SIM connected nahi hai! Kripya pehle apni SIM link karein.");
       setIsSending(false);
       return;
     }
 
     setServerLogs([
-      `[${new Date().toLocaleTimeString()}] Dispatching ${recipients.length} messages across ${connectedSIMs.length} SIMs...`,
+      `[${new Date().toLocaleTimeString()}] Dispatching ${recipients.length} messages across ${connectedSIMs.length} SIM(s)...`,
     ]);
 
     try {
@@ -765,6 +1214,8 @@ export default function MultiTenantWhatsAppSystem() {
         body: JSON.stringify({
           recipients: recipients.map((r) => r.phone),
           message: messageText,
+          messages: personalizedMessages,
+          allowedSimIds: connectedSIMs.map((s) => s.id),
           attachment: attachment ? { name: attachment.name, type: attachment.type, dataUrl: attachment.dataUrl } : null,
           selectedSimId: selectedDispatchSim,
         }),
@@ -842,14 +1293,10 @@ export default function MultiTenantWhatsAppSystem() {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Meta Cloud & SIM Bulk SaaS Portal
-            </div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Portal Login</h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Admin ya User account se login karke campaign manage karein
+          <div className="flex flex-col items-center text-center mb-6">
+            <AnantReachLogo size="lg" showSubtitle={true} />
+            <p className="text-xs text-slate-400 mt-2">
+              WhatsApp & Omni Social Publishing Platform
             </p>
           </div>
 
@@ -921,20 +1368,7 @@ export default function MultiTenantWhatsAppSystem() {
         <div className="space-y-6">
           {/* Brand Header */}
           <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-emerald-950/50">
-                💬
-              </div>
-              <div>
-                <div className="text-sm font-black text-white flex items-center gap-1.5">
-                  OmniChat SaaS
-                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-mono font-bold">
-                    PRO
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-400">WhatsApp & Social Suite</div>
-              </div>
-            </div>
+            <AnantReachLogo size="md" showSubtitle={true} />
             {/* Close button on mobile */}
             <button
               onClick={() => setIsMobileSidebarOpen(false)}
@@ -944,44 +1378,25 @@ export default function MultiTenantWhatsAppSystem() {
             </button>
           </div>
 
-          {/* User Profile & Credit Balance Card */}
-          <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-3.5 space-y-3 shadow-inner">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-bold text-white text-xs shadow-md">
-                {currentUser.name.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                  <span className="truncate">{currentUser.name}</span>
-                  {currentUser.role === "admin" ? (
-                    <span className="text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1 py-0.2 rounded font-mono font-bold">
-                      ADMIN
-                    </span>
-                  ) : (
-                    <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1 py-0.2 rounded font-mono font-bold">
-                      CLIENT
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-400 truncate">@{currentUser.username}</div>
-              </div>
+          {/* User Profile Card */}
+          <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3 shadow-inner">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-bold text-white text-xs shadow-md shrink-0">
+              {currentUser.name.slice(0, 2).toUpperCase()}
             </div>
-
-            {/* Credits Counter */}
-            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-              <div>
-                <div className="text-[10px] text-slate-400">Message Balance</div>
-                <div className="text-sm font-extrabold text-emerald-400 font-mono">
-                  {currentUser.role === "admin" ? "UNLIMITED" : currentUser.credits.toLocaleString()}{" "}
-                  <span className="text-[10px] font-normal text-slate-400">Credits</span>
-                </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                <span className="truncate">{currentUser.name}</span>
+                {currentUser.role === "admin" ? (
+                  <span className="text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                    ADMIN
+                  </span>
+                ) : (
+                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                    CLIENT
+                  </span>
+                )}
               </div>
-              <button
-                onClick={() => setShowBuyMetaModal(true)}
-                className="px-2.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-[10px] font-bold transition flex items-center gap-1 cursor-pointer shadow-md"
-              >
-                <span>+ Buy</span>
-              </button>
+              <div className="text-[10px] text-slate-400 truncate">@{currentUser.username}</div>
             </div>
           </div>
 
@@ -1129,26 +1544,58 @@ export default function MultiTenantWhatsAppSystem() {
             </div>
           </div>
 
-          {/* Quick Header Right Actions */}
-          <div className="flex items-center gap-2.5">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-              <span className="text-slate-400">Balance:</span>
-              <span className="font-mono font-bold text-emerald-400">
-                {currentUser.role === "admin" ? "UNLIMITED" : currentUser.credits.toLocaleString()}
-              </span>
-            </div>
-
+          {/* Right Header: Mobile App Install Button */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowBuyMetaModal(true)}
-              className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-md"
+              onClick={handleInstallApp}
+              className="py-1.5 px-3 bg-gradient-to-r from-emerald-600/30 to-cyan-600/30 hover:from-emerald-600/50 hover:to-cyan-600/50 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              title="Install Anant Reach on Phone"
             >
-              <span>💳 Buy Messages</span>
+              <span className="text-sm">📲</span>
+              <span className="hidden sm:inline">Install Mobile App</span>
+              <span className="sm:hidden">Install App</span>
             </button>
           </div>
         </header>
 
         {/* Scrollable Page Body */}
         <div className="p-4 sm:p-6 lg:p-8 flex-1">
+          {/* Mobile Install App Announcement Banner */}
+          {showMobileBanner && (
+            <div className="mb-5 p-3 sm:p-3.5 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-cyan-950/80 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3 shadow-xl">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-lg shrink-0">
+                  📱
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white truncate flex items-center gap-2">
+                    <span>Anant Reach Mobile App</span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+                      PWA
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 truncate">
+                    Apne phone par app ki tarah chalaane ke liye install karein!
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleInstallApp}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md active:scale-95"
+                >
+                  📲 Install App
+                </button>
+                <button
+                  onClick={() => setShowMobileBanner(false)}
+                  className="text-slate-400 hover:text-white text-xs p-1"
+                  title="Dismiss banner"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
 
       {/* =========================================================================
           META PRICING & BUY MESSAGES MODAL (AS PER META POLICY)
@@ -1569,102 +2016,140 @@ export default function MultiTenantWhatsAppSystem() {
         </div>
       )}
 
-      {/* WHATSAPP ENGINE CONFIGURATION MODAL */}
-      {showEngineModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <span>📡</span> WhatsApp Engine Server Setup
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Mobile aur Vercel se WhatsApp Engine connect karne ke liye
-                </p>
-              </div>
+      {/* SAVE TEMPLATE MODAL */}
+      {showSaveTemplateModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <span>💾</span>
+                <span>Save Message Template</span>
+              </h3>
               <button
-                onClick={() => setShowEngineModal(false)}
-                className="text-slate-400 hover:text-white text-lg p-1"
+                onClick={() => setShowSaveTemplateModal(false)}
+                className="text-slate-400 hover:text-white text-sm cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3">
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              Is template ko ek pehchan name dein taki aap ise baad me kabhi bhi 1-click me load karke use kar sakein.
+            </p>
+
+            <form onSubmit={handleSaveCurrentTemplate} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Active WhatsApp Engine URL:
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Template Name (e.g. Outstanding Notice, Payment Reminder)
                 </label>
                 <input
                   type="text"
-                  value={engineInputUrl}
-                  onChange={(e) => setEngineInputUrl(e.target.value)}
-                  placeholder="http://192.168.1.6:5001 ya https://xyz.localtunnel.me"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-500"
+                  required
+                  placeholder="e.g. Outstanding & Aging Notice"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
-              {/* Quick Preset Buttons */}
-              <div className="space-y-2">
-                <span className="text-[11px] text-slate-400 font-medium">Quick Presets:</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEngineInputUrl("http://localhost:5001")}
-                    className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition cursor-pointer"
-                  >
-                    <div className="text-xs font-bold text-white">💻 Laptop Localhost</div>
-                    <div className="text-[10px] text-slate-400 font-mono">http://localhost:5001</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
-                        setEngineInputUrl(`http://${window.location.hostname}:5001`);
-                      } else {
-                        setEngineInputUrl("http://192.168.1.6:5001");
-                      }
-                    }}
-                    className="p-2.5 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-800/60 text-left transition cursor-pointer"
-                  >
-                    <div className="text-xs font-bold text-cyan-300">📱 Mobile Wi-Fi (Same Network)</div>
-                    <div className="text-[10px] text-cyan-400/80 font-mono">http://192.168.1.6:5001</div>
-                  </button>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Template Message Preview
+                </label>
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 font-sans max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                  {messageText || "(Message box is empty)"}
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1 leading-relaxed">
-                <p className="font-semibold text-slate-300">💡 Mobile & Vercel Guide:</p>
-                <p>• <strong>Same Wi-Fi par Mobile:</strong> Laptop ka Wi-Fi IP <code className="text-cyan-400 font-mono">http://192.168.1.6:5001</code> use karein.</p>
-                <p>• <strong>Vercel (Internet):</strong> Terminal me <code className="text-emerald-400 font-mono">npx localtunnel --port 5001</code> chala kar jo HTTPS link mile use yahan paste karein.</p>
+              {detectedVariables.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    Auto-Included Variables:
+                  </label>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedVariables.map((v) => (
+                      <span key={v} className="px-2 py-0.5 rounded bg-slate-800 text-emerald-400 text-[10px] font-mono">
+                        {`{${v}}`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingTemplate || !messageText.trim()}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-lg"
+                >
+                  {isSavingTemplate ? "Saving..." : "Save Template"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSaveTemplateModal(false)}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE APP INSTALL GUIDE MODAL */}
+      {showInstallGuideModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <span className="text-lg">📲</span>
+                <span>Install Anant Reach on Mobile</span>
+              </h3>
+              <button
+                onClick={() => setShowInstallGuideModal(false)}
+                className="text-slate-400 hover:text-white text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
+              Anant Reach ek Progressive Web App (PWA) hai. Ise bina Play Store ke direct phone ki home screen par app bana kar chala sakte hain:
+            </p>
+
+            <div className="space-y-3">
+              {/* Android Chrome */}
+              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
+                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mb-1">
+                  <span>🤖</span> Android (Google Chrome):
+                </div>
+                <ol className="text-[11px] text-slate-300 space-y-1 list-decimal list-inside leading-relaxed">
+                  <li>Chrome browser ke top-right me <strong>3 dots (⋮)</strong> par tap karein.</li>
+                  <li>Menu me <strong>"Install app"</strong> ya <strong>"Add to Home screen"</strong> chunein.</li>
+                  <li><strong>Install</strong> par tap karein — App phone screen par aa jayegi!</li>
+                </ol>
+              </div>
+
+              {/* iPhone iOS Safari */}
+              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
+                <div className="text-xs font-bold text-cyan-400 flex items-center gap-1.5 mb-1">
+                  <span>🍎</span> iPhone / iPad (Apple Safari):
+                </div>
+                <ol className="text-[11px] text-slate-300 space-y-1 list-decimal list-inside leading-relaxed">
+                  <li>Safari browser ke bottom me <strong>Share button (📤)</strong> par tap karein.</li>
+                  <li>Niche scroll karke <strong>"Add to Home Screen" (➕)</strong> chunein.</li>
+                  <li>Top-right me <strong>"Add"</strong> dabayein — Native App ki tarah save ho jayegi!</li>
+                </ol>
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowEngineModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const cleaned = engineInputUrl.trim() || "http://localhost:5001";
-                  setEngineUrl(cleaned);
-                  if (typeof window !== "undefined") {
-                    localStorage.setItem("custom_wa_engine_url", cleaned);
-                  }
-                  setShowEngineModal(false);
-                  setTimeout(fetchSessions, 100);
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs font-bold cursor-pointer shadow-lg"
-              >
-                Save & Connect
-              </button>
-            </div>
+            <button
+              onClick={() => setShowInstallGuideModal(false)}
+              className="mt-5 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-lg"
+            >
+              Samajh Gaya (Done)
+            </button>
           </div>
         </div>
       )}
@@ -1978,64 +2463,37 @@ export default function MultiTenantWhatsAppSystem() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center">
                     <button
                       onClick={() => {
                         setShowAddSimModal(true);
                         setActiveQR(null);
                         setActivePairingCode(null);
-                        setNewSimLabel(`SIM ${sessions.length + 1}`);
+                        setNewSimLabel(`SIM ${userVisibleSessions.length + 1}`);
                       }}
-                      className="flex-1 py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      className="w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                     >
                       <span>+ Link SIM (OTP/QR)</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEngineInputUrl(engineUrl);
-                        setShowEngineModal(true);
-                      }}
-                      title="Configure WhatsApp Engine URL (WiFi / Tunnel / Localhost)"
-                      className="py-3 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer shadow-sm"
-                    >
-                      <span>📡</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Active SIMs List & Server Connection Bar */}
+                {/* Active SIMs List (Filtered by User) */}
                 <div className="mt-4 pt-3 border-t border-slate-800/80">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-300">Live SIM Devices:</span>
-                      <span className="text-[11px] text-slate-500">
-                        ({connectedSIMs.length} connected)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px]">
-                        <span className={`w-2 h-2 rounded-full ${isServerOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`}></span>
-                        <span className="text-slate-400 font-mono">Engine: {engineUrl.replace("http://", "").replace("https://", "")}</span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setEngineInputUrl(engineUrl);
-                          setShowEngineModal(true);
-                        }}
-                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
-                      >
-                        ⚙️ Change Engine URL
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-bold text-slate-300">Live SIM Devices:</span>
+                    <span className="text-[11px] text-slate-500">
+                      ({connectedSIMs.length} connected)
+                    </span>
                   </div>
 
-                  {sessions.length === 0 ? (
+                  {userVisibleSessions.length === 0 ? (
                     <div className="p-3 bg-slate-950/60 border border-dashed border-slate-800 rounded-xl text-center text-xs text-slate-500">
-                      Koi SIM connected nahi hai. "+ Link SIM (OTP/QR)" par click karke apna WhatsApp number jodein.
+                      Aapke account par koi SIM connected nahi hai. "+ Link SIM (OTP/QR)" par click karke apna WhatsApp number jodein.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {sessions.map((sim) => (
+                      {userVisibleSessions.map((sim) => (
                         <div
                           key={sim.id}
                           className={`p-3 rounded-xl border flex items-center justify-between ${
@@ -2054,6 +2512,11 @@ export default function MultiTenantWhatsAppSystem() {
                               <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
                                 <span>{sim.label}</span>
                                 <span className={`w-1.5 h-1.5 rounded-full ${sim.status === "CONNECTED" ? "bg-emerald-400" : "bg-amber-400"}`}></span>
+                                {currentUser?.role === "admin" && sim.owner && (
+                                  <span className="text-[9px] bg-slate-800 text-cyan-300 px-1 rounded font-mono">
+                                    @{sim.owner}
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[11px] text-cyan-400 font-mono truncate">
                                 {sim.userPhone ? `+${sim.userPhone}` : sim.status}
@@ -2088,45 +2551,50 @@ export default function MultiTenantWhatsAppSystem() {
                     </span>
                     Target Contacts ({recipients.length})
                   </h2>
-                  <div className="flex items-center gap-2">
+                  {recipients.length > 0 && (
                     <button
                       type="button"
-                      onClick={handleLoadDemoContacts}
-                      className="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer underline"
+                      onClick={() => {
+                        setRecipients([]);
+                        setDirectPasteInput("");
+                        setNumbersFeedback("");
+                        setFileName("");
+                        setDetectedVariables([]);
+                      }}
+                      className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
                     >
-                      + 3 Demo Numbers
+                      Clear All
                     </button>
-                    {recipients.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setRecipients([])}
-                        className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 <p className="text-[11px] text-slate-400 mb-2">
-                  💡 Hint: Direct number paste karein ya Excel sheet upload karein (1 line me 1 number):
+                  📱 Mobile Numbers Box (Only 10 Digits | Auto-shift at 10 | Duplicates & &lt;10 auto-removed):
                 </p>
 
                 <textarea
-                  rows={3}
-                  placeholder="8875216646&#10;Rahul, 9057588165"
+                  rows={4}
+                  placeholder={"8875216646\n9057588165\n(Type or paste mobile numbers here)"}
                   value={directPasteInput}
-                  onChange={(e) => setDirectPasteInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                  onChange={handleNumberInputChange}
+                  onPaste={handleNumberPaste}
+                  onBlur={handleNumberInputBlur}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-emerald-400 focus:outline-none focus:border-cyan-500 font-mono leading-relaxed resize-y placeholder:text-slate-600"
                 ></textarea>
+
+                {numbersFeedback && (
+                  <div className="mt-2 p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-cyan-300 font-mono">
+                    {numbersFeedback}
+                  </div>
+                )}
 
                 <div className="flex gap-2 mt-2">
                   <button
                     type="button"
-                    onClick={handleAddDirectPasted}
+                    onClick={handleNumberInputBlur}
                     className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-xl transition cursor-pointer shadow-md"
                   >
-                    + Add Pasted Numbers
+                    ⚡ Auto-Format & Clean
                   </button>
                   <button
                     type="button"
@@ -2157,58 +2625,149 @@ export default function MultiTenantWhatsAppSystem() {
             <section className="lg:col-span-7 flex flex-col gap-6">
               {/* Message Box */}
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs font-bold">
                       3
                     </span>
-                    Message Content & Templates
+                    Message Content & Dynamic Templates
                   </h2>
-                  <span className="text-[11px] text-slate-400 font-mono">
+
+                  {/* Template selector & Save / Delete controls */}
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(e) => handleSelectTemplate(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 font-medium"
+                    >
+                      <option value="">-- Saved Templates --</option>
+                      {savedTemplates.map((tpl) => (
+                        <option key={tpl.id} value={tpl.id}>
+                          {tpl.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowSaveTemplateModal(true)}
+                      title="Save current message as template"
+                      className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <span>💾</span>
+                      <span>Save</span>
+                    </button>
+
+                    {selectedTemplateId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = savedTemplates.find((t) => t.id === selectedTemplateId);
+                          if (cur) handleDeleteTemplate(cur.id, cur.name);
+                        }}
+                        title="Delete selected template"
+                        className="px-2 py-1.5 bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Variable Tags Bar (Excel Column Headers) */}
+                <div className="mb-2.5 p-2.5 bg-slate-950/70 border border-slate-800 rounded-2xl">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                      <span className="text-emerald-400">🏷️</span>
+                      <span>
+                        {detectedVariables.length > 0
+                          ? `Uploaded Excel Headers (${detectedVariables.length}):`
+                          : "Dynamic Column Tags:"}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const custom = prompt("Custom tag ka naam likhein (e.g. invoice, balance, city):");
+                        if (custom && custom.trim()) {
+                          const clean = custom.trim();
+                          if (!detectedVariables.includes(clean)) {
+                            setDetectedVariables((prev) => [...prev, clean]);
+                          }
+                          handleInsertVariable(clean);
+                        }
+                      }}
+                      className="text-[10px] text-cyan-400 hover:text-cyan-300 underline font-semibold cursor-pointer"
+                    >
+                      + Custom Tag
+                    </button>
+                  </div>
+
+                  {detectedVariables.length === 0 ? (
+                    <div className="text-[11px] text-slate-500 py-1 flex items-center gap-1.5">
+                      <span>ℹ️</span>
+                      <span>Excel sheet upload karein — uske saare column headers automatic yahan buttons ban kar dikhenge.</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {detectedVariables.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => handleInsertVariable(v)}
+                          className="px-2.5 py-1 bg-slate-900 hover:bg-emerald-950 border border-slate-700 hover:border-emerald-500/50 text-emerald-300 rounded-lg text-xs font-mono transition cursor-pointer shadow-sm"
+                          title={`Click to insert {${v}} in message`}
+                        >
+                          + {`{${v}}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    rows={4}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Dear {name}, your outstating is {os pending} from {due date} ageing is {aging} thanks you"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 leading-relaxed font-sans"
+                  ></textarea>
+                  <span className="absolute bottom-2.5 right-3 text-[10px] text-slate-500 font-mono">
                     {messageText.length} chars
                   </span>
                 </div>
 
-                <textarea
-                  rows={3}
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  placeholder="Aapka message yahan likhein..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 leading-relaxed"
-                ></textarea>
-
-                {/* Quick Insert & Templates */}
-                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                  <span className="text-[11px] text-slate-400 font-medium mr-1">Quick Templates:</span>
-                  <button
-                    type="button"
-                    onClick={() => setMessageText((prev) => prev.trim() + " {Name}")}
-                    className="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-mono font-bold transition cursor-pointer"
-                  >
-                    + {`{Name}`}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMessageText("🎉 Special Festive Offer! Dear {Name}, enjoy up to 40% OFF on all services today. Order now: 8875216646")}
-                    className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-xs transition cursor-pointer"
-                  >
-                    🎁 Festival Offer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMessageText("📦 Order Update: Hello {Name}, aapka order dispatch ho chuka hai aur jald hi deliver hoga. Tracking ke liye reply karein!")}
-                    className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-xs transition cursor-pointer"
-                  >
-                    📦 Order Update
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMessageText("👋 Namaste {Name}, hum aapki kya sahayata kar sakte hain? Kripya apna prashna yahan reply karein.")}
-                    className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-xs transition cursor-pointer"
-                  >
-                    💬 Support Help
-                  </button>
-                </div>
+                {/* Live Message Preview (showing how actual message will look for 1st recipient) */}
+                {recipients.length > 0 && (
+                  <div className="mt-2.5 p-2.5 bg-emerald-950/20 border border-emerald-900/40 rounded-xl">
+                    <div className="text-[10px] font-bold text-emerald-400 mb-1 flex items-center justify-between">
+                      <span>👁️ Live Preview for First Contact ({recipients[0].phone}):</span>
+                      <span className="text-slate-400 font-normal text-[10px]">Excel columns auto-substituted</span>
+                    </div>
+                    <div className="text-xs text-slate-200 whitespace-pre-wrap font-sans bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80 leading-relaxed">
+                      {(() => {
+                        let preview = messageText;
+                        const row = recipients[0].customData || {};
+                        const lowerRow: Record<string, any> = {};
+                        Object.keys(row).forEach((k) => {
+                          lowerRow[k.trim().toLowerCase()] = row[k];
+                        });
+                        preview = preview.replace(/{([^}]+)}/g, (match, key) => {
+                          const cleanKey = key.trim().toLowerCase();
+                          if (cleanKey === "name") {
+                            return recipients[0].name || lowerRow["name"] || match;
+                          }
+                          if (lowerRow[cleanKey] !== undefined && lowerRow[cleanKey] !== null) {
+                            return String(lowerRow[cleanKey]);
+                          }
+                          return match;
+                        });
+                        return preview;
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Media Attachment (1 of 3) */}

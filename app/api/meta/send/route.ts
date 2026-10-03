@@ -28,7 +28,7 @@ function formatPhone(p: string): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { recipients, message, templateName, languageCode } = body;
+    const { recipients, message, messages, templateName, languageCode } = body;
 
     const config = getConfig();
 
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
           type: "text",
           text: {
             preview_url: false,
-            body: message || "Hello from WhatsApp Business",
+            body: (Array.isArray(messages) && messages[i]) ? messages[i] : (message || "Hello from WhatsApp Business"),
           },
         };
       }
