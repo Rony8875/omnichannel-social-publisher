@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "wa:start": "node wa-engine.js",
     "lint": "eslint"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^9.1.0",
     "@whiskeysockets/baileys": "^7.0.0-rc14",
     "cors": "^2.8.6",
     "express": "^5.2.1",

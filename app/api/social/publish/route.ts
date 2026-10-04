@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import {
+  fetchUserSocialAccounts,
+  fetchUserSocialPosts,
+  uploadRowsToBigQuery,
+} from "@/lib/bigquery";
 
 const POSTS_FILE = path.join(process.cwd(), "data", "social_posts.json");
-const ACCOUNTS_FILE = path.join(process.cwd(), "data", "social_accounts.json");
 
-function getPosts() {
+function getAllPosts() {
   if (!fs.existsSync(POSTS_FILE)) return [];
   try {
     const raw = fs.readFileSync(POSTS_FILE, "utf-8");
@@ -16,24 +20,20 @@ function getPosts() {
   }
 }
 
-function savePosts(posts: any[]) {
+function saveAllPosts(posts: any[]) {
   fs.writeFileSync(POSTS_FILE, JSON.stringify({ posts }, null, 2), "utf-8");
 }
 
-function getAccounts() {
-  if (!fs.existsSync(ACCOUNTS_FILE)) return [];
+export async function GET(request: Request) {
   try {
-    const raw = fs.readFileSync(ACCOUNTS_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return parsed.accounts || [];
-  } catch {
-    return [];
-  }
-}
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId") || "admin_1";
 
-export async function GET() {
-  const posts = getPosts();
-  return NextResponse.json({ success: true, posts });
+    const posts = await fetchUserSocialPosts(userId);
+    return NextResponse.json({ success: true, posts });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       mediaType,
       platforms,
       author,
+      userId = "admin_1",
       scheduleMode = "now",
       scheduledTime,
       platformSchedules,
@@ -64,23 +65,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const allAccounts = getAccounts();
-
-    // Check if scheduling for later
+    // Fetch accounts strictly for THIS user
+    const userAccounts = await fetchUserSocialAccounts(userId);
     const isScheduled = scheduleMode === "later";
-
     const results: any[] = [];
 
-    // Dispatch or schedule for each selected platform
     for (const platId of platforms) {
-      const acct = allAccounts.find((a: any) => a.id === platId);
+      const acct = userAccounts.find((a: any) => a.id === platId);
       const isConnected = acct ? acct.connected : true;
 
       if (!isConnected) {
         results.push({
           platform: platId,
           status: "FAILED",
-          error: `Platform ${acct?.name || platId} is not connected. Kripya pehle account link karein.`,
+          error: `Platform ${acct?.name || platId} aapke account se linked nahi hai. Kripya pehle connect karein.`,
         });
         continue;
       }
@@ -95,7 +93,6 @@ export async function POST(request: Request) {
       else if (platId === "telegram") postId = `tg_msg_${timestamp.toString().slice(-8)}`;
       else postId = `pub_${platId}_${timestamp.toString().slice(-8)}`;
 
-      // Custom platform time if specified
       const platTime = platformSchedules?.[platId] || scheduledTime || new Date().toISOString();
 
       results.push({
@@ -109,10 +106,13 @@ export async function POST(request: Request) {
       });
     }
 
-    const successCount = results.filter((r) => r.status === "SUCCESS" || r.status === "SCHEDULED").length;
+    const successCount = results.filter(
+      (r) => r.status === "SUCCESS" || r.status === "SCHEDULED"
+    ).length;
 
     const newPost = {
       id: `post_${Date.now()}`,
+      userId,
       caption,
       mediaUrl: mediaUrl ? "[Uploaded Media]" : null,
       mediaType: mediaType || null,
@@ -121,13 +121,36 @@ export async function POST(request: Request) {
       status: isScheduled ? "Scheduled" : successCount > 0 ? "Published" : "Failed",
       scheduledTime: isScheduled ? scheduledTime || new Date().toISOString() : null,
       platformSchedules: isScheduled ? platformSchedules || null : null,
-      author: author || "Admin",
+      author: author || "User",
       results,
     };
 
-    const currentPosts = getPosts();
+    const currentPosts = getAllPosts();
     currentPosts.unshift(newPost);
-    savePosts(currentPosts);
+    saveAllPosts(currentPosts);
+
+    // Sync with BigQuery in background with userId
+    uploadRowsToBigQuery(
+      "social_posts",
+      [
+        {
+          id: newPost.id,
+          userId: newPost.userId,
+          author: newPost.author,
+          caption: newPost.caption || "",
+          mediaUrl: newPost.mediaUrl || null,
+          mediaType: newPost.mediaType || "text",
+          platforms: newPost.platforms || [],
+          status: newPost.status,
+          createdAt: newPost.createdAt,
+          scheduledTime: newPost.scheduledTime,
+          platformSchedules: newPost.platformSchedules
+            ? JSON.stringify(newPost.platformSchedules)
+            : null,
+        },
+      ],
+      false
+    ).catch((e) => console.warn("Background BigQuery sync notice:", e.message));
 
     return NextResponse.json({
       success: true,
@@ -143,17 +166,21 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT: Trigger Instant Publish for a Scheduled Post
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { postId } = body;
+    const { postId, userId = "admin_1" } = body;
 
-    const posts = getPosts();
-    const index = posts.findIndex((p: any) => p.id === postId);
+    const posts = getAllPosts();
+    const index = posts.findIndex(
+      (p: any) => p.id === postId && (p.userId || "admin_1") === userId
+    );
 
     if (index === -1) {
-      return NextResponse.json({ success: false, error: "Post nahi mili!" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: "Post nahi mili ya access permission nahi hai!" },
+        { status: 404 }
+      );
     }
 
     const post = posts[index];
@@ -170,7 +197,7 @@ export async function PUT(request: Request) {
     }
 
     posts[index] = post;
-    savePosts(posts);
+    saveAllPosts(posts);
 
     return NextResponse.json({
       success: true,
@@ -182,19 +209,48 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE: Cancel / Remove a post from history or scheduled queue
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const postId = searchParams.get("id");
+    const userId = searchParams.get("userId") || "admin_1";
 
     if (!postId) {
-      return NextResponse.json({ success: false, error: "Post ID zaroori hai!" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Post ID zaroori hai!" },
+        { status: 400 }
+      );
     }
 
-    let posts = getPosts();
-    posts = posts.filter((p: any) => p.id !== postId);
-    savePosts(posts);
+    let allPosts = getAllPosts();
+
+    if (postId === "all") {
+      allPosts = allPosts.filter((p: any) => (p.userId || "admin_1") !== userId);
+      saveAllPosts(allPosts);
+    } else {
+      allPosts = allPosts.filter(
+        (p: any) => !(p.id === postId && (p.userId || "admin_1") === userId)
+      );
+      saveAllPosts(allPosts);
+    }
+
+    // Sync updated posts to BigQuery
+    const formatted = allPosts.map((p: any) => ({
+      id: p.id,
+      userId: p.userId || "admin_1",
+      author: p.author || "User",
+      caption: p.caption || "",
+      mediaUrl: p.mediaUrl || null,
+      mediaType: p.mediaType || "text",
+      platforms: p.platforms || [],
+      status: p.status,
+      createdAt: p.createdAt,
+      scheduledTime: p.scheduledTime,
+      platformSchedules: p.platformSchedules
+        ? JSON.stringify(p.platformSchedules)
+        : null,
+    }));
+    uploadRowsToBigQuery("social_posts", formatted, true).catch(() => {});
 
     return NextResponse.json({
       success: true,

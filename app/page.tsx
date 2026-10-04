@@ -248,7 +248,7 @@ export default function MultiTenantWhatsAppSystem() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
   const [isMobileUser, setIsMobileUser] = useState<boolean>(false);
-  const [showMobileBanner, setShowMobileBanner] = useState<boolean>(true);
+  const [showPwaPopup, setShowPwaPopup] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -266,14 +266,31 @@ export default function MultiTenantWhatsAppSystem() {
     }
   }, []);
 
+  // Show PWA popup for exactly 5 seconds once per browser session ONLY when logged in
+  useEffect(() => {
+    if (currentUser && typeof window !== "undefined") {
+      const alreadyShown = sessionStorage.getItem("anant_pwa_popup_shown");
+      if (!alreadyShown) {
+        sessionStorage.setItem("anant_pwa_popup_shown", "true");
+        setShowPwaPopup(true);
+
+        const timer = setTimeout(() => {
+          setShowPwaPopup(false);
+        }, 5000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [currentUser]);
+
   const handleInstallApp = async () => {
+    setShowPwaPopup(false);
     if (deferredPrompt) {
       try {
         deferredPrompt.prompt();
         const choice = await deferredPrompt.userChoice;
         if (choice && choice.outcome === "accepted") {
           setDeferredPrompt(null);
-          setShowMobileBanner(false);
         }
       } catch (e) {
         setShowInstallGuideModal(true);
@@ -1544,58 +1561,10 @@ export default function MultiTenantWhatsAppSystem() {
             </div>
           </div>
 
-          {/* Right Header: Mobile App Install Button */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleInstallApp}
-              className="py-1.5 px-3 bg-gradient-to-r from-emerald-600/30 to-cyan-600/30 hover:from-emerald-600/50 hover:to-cyan-600/50 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-              title="Install Anant Reach on Phone"
-            >
-              <span className="text-sm">📲</span>
-              <span className="hidden sm:inline">Install Mobile App</span>
-              <span className="sm:hidden">Install App</span>
-            </button>
-          </div>
         </header>
 
         {/* Scrollable Page Body */}
         <div className="p-4 sm:p-6 lg:p-8 flex-1">
-          {/* Mobile Install App Announcement Banner */}
-          {showMobileBanner && (
-            <div className="mb-5 p-3 sm:p-3.5 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-cyan-950/80 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3 shadow-xl">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-lg shrink-0">
-                  📱
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate flex items-center gap-2">
-                    <span>Anant Reach Mobile App</span>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
-                      PWA
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-300 truncate">
-                    Apne phone par app ki tarah chalaane ke liye install karein!
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={handleInstallApp}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md active:scale-95"
-                >
-                  📲 Install App
-                </button>
-                <button
-                  onClick={() => setShowMobileBanner(false)}
-                  className="text-slate-400 hover:text-white text-xs p-1"
-                  title="Dismiss banner"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
 
       {/* =========================================================================
           META PRICING & BUY MESSAGES MODAL (AS PER META POLICY)
@@ -2150,6 +2119,57 @@ export default function MultiTenantWhatsAppSystem() {
             >
               Samajh Gaya (Done)
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5-SECOND FLOATING PWA INSTALL POPUP (Only once upon browser login) */}
+      {showPwaPopup && currentUser && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100%-3rem)] sm:w-96 bg-slate-900/95 border border-emerald-500/50 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-fadeIn flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0">
+              📱
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-white flex items-center gap-2">
+                <span>Anant Reach Mobile App</span>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono font-bold">
+                  PWA
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-300 mt-0.5 leading-snug">
+                Apne phone par app ki tarah chalaane ke liye install karein!
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPwaPopup(false)}
+              className="text-slate-400 hover:text-white p-1 text-xs cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                handleInstallApp();
+                setShowPwaPopup(false);
+              }}
+              className="flex-1 py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md text-center"
+            >
+              📲 Install App
+            </button>
+            <button
+              onClick={() => setShowPwaPopup(false)}
+              className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+            >
+              Later
+            </button>
+          </div>
+
+          {/* 5-Second Animated Bar */}
+          <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+            <div className="bg-emerald-400 h-full animate-[pulse_1s_infinite]"></div>
           </div>
         </div>
       )}
@@ -2996,7 +3016,7 @@ export default function MultiTenantWhatsAppSystem() {
           ========================================================================= */}
       {activeTab === "social" && (
         <main className="max-w-7xl mx-auto mt-6">
-          <OmniChannelSocialPublisher currentUserName={currentUser.name} />
+          <OmniChannelSocialPublisher currentUserName={currentUser.name} currentUserId={currentUser.id} />
         </main>
       )}
         </div>

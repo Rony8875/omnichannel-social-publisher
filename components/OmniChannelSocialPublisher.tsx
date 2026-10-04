@@ -46,9 +46,11 @@ export interface SocialPost {
 
 interface Props {
   currentUserName: string;
+  currentUserId?: string;
 }
 
-export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
+export default function OmniChannelSocialPublisher({ currentUserName, currentUserId }: Props) {
+  const activeUserId = currentUserId || "admin_1";
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
     "facebook",
@@ -57,9 +59,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
     "twitter",
     "whatsapp",
   ]);
-  const [caption, setCaption] = useState<string>(
-    "🔥 Grand Festive Offer! Hamare premium products & services par paayein flat 40% OFF! Order book karne ke liye WhatsApp karein ya website visit karein. Limited period offer! 🚀🎁 #FestiveSale #MegaDiscount #BusinessGrowth #SpecialDeal"
-  );
+  const [caption, setCaption] = useState<string>("");
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaName, setMediaName] = useState<string>("");
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
@@ -121,10 +121,10 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
     setUnifiedDateTime(formatted);
   }, []);
 
-  // Fetch accounts
+  // Fetch accounts strictly for this logged-in user
   const fetchAccounts = async () => {
     try {
-      const res = await fetch("/api/social/accounts");
+      const res = await fetch(`/api/social/accounts?userId=${activeUserId}`);
       const data = await res.json();
       if (data.success && data.accounts) {
         setAccounts(data.accounts);
@@ -134,10 +134,10 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
     }
   };
 
-  // Fetch posts
+  // Fetch posts strictly for this logged-in user
   const fetchPosts = async () => {
     try {
-      const res = await fetch("/api/social/publish");
+      const res = await fetch(`/api/social/publish?userId=${activeUserId}`);
       const data = await res.json();
       if (data.success && data.posts) {
         setPostsHistory(data.posts);
@@ -158,7 +158,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
     };
     window.addEventListener("message", handleOAuthMessage);
     return () => window.removeEventListener("message", handleOAuthMessage);
-  }, []);
+  }, [activeUserId]);
 
   // Handle media selection
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,6 +281,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: activeUserId,
           caption,
           mediaUrl: mediaPreview,
           mediaType,
@@ -318,7 +319,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
         const res = await fetch("/api/social/publish", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postId }),
+          body: JSON.stringify({ postId, userId: activeUserId }),
         });
         const data = await res.json();
         if (data.success) {
@@ -337,7 +338,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
   const handleCancelScheduledPost = async (postId: string) => {
     if (confirm("Kya aap is scheduled post ko cancel karna chahte hain?")) {
       try {
-        const res = await fetch(`/api/social/publish?id=${postId}`, { method: "DELETE" });
+        const res = await fetch(`/api/social/publish?id=${postId}&userId=${activeUserId}`, { method: "DELETE" });
         const data = await res.json();
         if (data.success) {
           fetchPosts();
@@ -356,7 +357,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
       const res = await fetch("/api/social/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId, action: "toggle" }),
+        body: JSON.stringify({ accountId, action: "toggle", userId: activeUserId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -395,6 +396,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
           action: "login_verify",
           loginId: loginIdInput.trim(),
           password: passwordInput.trim(),
+          userId: activeUserId,
         }),
       });
 
@@ -420,7 +422,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
         const res = await fetch("/api/social/accounts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accountId, action: "disconnect" }),
+          body: JSON.stringify({ accountId, action: "disconnect", userId: activeUserId }),
         });
         const data = await res.json();
         if (data.success) {
@@ -439,7 +441,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
       const res = await fetch("/api/social/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId, action: "test_connection" }),
+        body: JSON.stringify({ accountId, action: "test_connection", userId: activeUserId }),
       });
       const data = await res.json();
       if (data.success && data.report) {
@@ -460,37 +462,37 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
     facebook: {
       name: "Facebook",
       url: "https://www.facebook.com/login.php",
-      defaultHandle: "@8875216646",
+      defaultHandle: "",
       brandColor: "#1877F2",
     },
     instagram: {
       name: "Instagram",
       url: "https://www.instagram.com/accounts/login/",
-      defaultHandle: "@kkrstudy",
+      defaultHandle: "",
       brandColor: "#E1306C",
     },
     linkedin: {
       name: "LinkedIn",
       url: "https://www.linkedin.com/login",
-      defaultHandle: "My Business Corp",
+      defaultHandle: "",
       brandColor: "#0A66C2",
     },
     twitter: {
       name: "X (Twitter)",
       url: "https://twitter.com/i/flow/login",
-      defaultHandle: "@SharmaHQ",
+      defaultHandle: "",
       brandColor: "#000000",
     },
     whatsapp: {
       name: "WhatsApp Web",
       url: "https://web.whatsapp.com",
-      defaultHandle: "+91 88752 16646",
+      defaultHandle: "",
       brandColor: "#25D366",
     },
     telegram: {
       name: "Telegram Web",
       url: "https://web.telegram.org",
-      defaultHandle: "+91 88752 16646",
+      defaultHandle: "",
       brandColor: "#229ED9",
     },
   };
@@ -543,6 +545,7 @@ export default function OmniChannelSocialPublisher({ currentUserName }: Props) {
           action: "login_verify",
           loginId: verifiedHandleInput.trim() || officialVerifyingPlatform.handle,
           password: "Official_Web_Verified_OAuth_Session_2026",
+          userId: activeUserId,
         }),
       });
 

@@ -41,7 +41,7 @@ export default function PlatformOAuthPage() {
         "pages_manage_posts",
         "public_profile"
       ],
-      defaultHandle: "sharma_clothing_official@gmail.com",
+      defaultHandle: "",
     },
     instagram: {
       name: "Instagram",
@@ -56,7 +56,7 @@ export default function PlatformOAuthPage() {
         "instagram_content_publish",
         "instagram_manage_insights"
       ],
-      defaultHandle: "@kkrstudy",
+      defaultHandle: "",
     },
     linkedin: {
       name: "LinkedIn",
@@ -71,7 +71,7 @@ export default function PlatformOAuthPage() {
         "r_organization_social",
         "w_organization_social"
       ],
-      defaultHandle: "sharma.corp.linkedin@gmail.com",
+      defaultHandle: "",
     },
     twitter: {
       name: "X (formerly Twitter)",
@@ -86,7 +86,7 @@ export default function PlatformOAuthPage() {
         "tweet.write",
         "users.read"
       ],
-      defaultHandle: "@SharmaHQ",
+      defaultHandle: "",
     },
     whatsapp: {
       name: "WhatsApp Web",
@@ -100,7 +100,7 @@ export default function PlatformOAuthPage() {
         "whatsapp_business_messaging",
         "whatsapp_device_pairing"
       ],
-      defaultHandle: "+91 88752 16646",
+      defaultHandle: "",
     },
     telegram: {
       name: "Telegram",
@@ -114,7 +114,7 @@ export default function PlatformOAuthPage() {
         "messages.send",
         "channels.post"
       ],
-      defaultHandle: "+91 88752 16646",
+      defaultHandle: "",
     },
   };
 

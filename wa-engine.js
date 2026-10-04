@@ -450,7 +450,17 @@ app.post('/api/sessions/send-bulk', async (req, res) => {
   }
 });
 
-const PORT = 5001;
+// Health check endpoint for Render / Cloud deployment
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'Private WhatsApp Baileys Engine',
+    activeSessions: sessions.size,
+    timestamp: new Date().toISOString()
+  });
+});
+
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, async () => {
   console.log(`===================================================`);
   console.log(`🚀 Private WhatsApp Server is running on port ${PORT}`);
