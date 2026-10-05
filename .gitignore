@@ -44,3 +44,4 @@ deploy_package.zip
 wa_sessions/
 credentials/
 *.json.key
+*.ndjson

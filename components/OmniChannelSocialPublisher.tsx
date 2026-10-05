@@ -128,6 +128,10 @@ export default function OmniChannelSocialPublisher({ currentUserName, currentUse
       const data = await res.json();
       if (data.success && data.accounts) {
         setAccounts(data.accounts);
+        const connectedIds = data.accounts.filter((a: any) => a.connected).map((a: any) => a.id);
+        if (connectedIds.length > 0) {
+          setSelectedPlatforms(connectedIds);
+        }
       }
     } catch (err) {
       console.error("Error fetching social accounts", err);
@@ -497,36 +501,19 @@ export default function OmniChannelSocialPublisher({ currentUserName, currentUse
     },
   };
 
-  // Open REAL Official Platform Website in Popup Window!
+  // Open Buffer-style Official OAuth 2.0 Gateway in Centered Popup Window!
   const handleOpenOAuthPopup = (platformId: string) => {
-    const targetAccount = accounts.find((a) => a.id === platformId);
-    const config = OFFICIAL_PLATFORM_URLS[platformId] || {
-      name: targetAccount?.name || platformId,
-      url: "https://www.facebook.com/login.php",
-      defaultHandle: targetAccount?.handle || "@MyOfficialHandle",
-      brandColor: "#1877F2",
-    };
-
-    const initialHandle = targetAccount?.handle && targetAccount.handle !== "@..." ? targetAccount.handle : config.defaultHandle;
-
-    setOfficialVerifyingPlatform({
-      id: platformId,
-      name: config.name,
-      url: config.url,
-      handle: initialHandle,
-    });
-    setVerifiedHandleInput(initialHandle);
-
     const width = 640;
     const height = 750;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
-    // Open the REAL official website popup (facebook.com, instagram.com, linkedin.com, etc.)
+    const popupUrl = `/api/auth/oauth/${platformId}?userId=${encodeURIComponent(activeUserId)}`;
+
     window.open(
-      config.url,
-      `official_login_${platformId}`,
-      `width=${width},height=${height},left=${left},top=${top},status=yes,toolbar=yes,menubar=no,resizable=yes,scrollbars=yes`
+      popupUrl,
+      `oauth_${platformId}`,
+      `width=${width},height=${height},left=${left},top=${top},status=yes,toolbar=no,menubar=no,resizable=yes,scrollbars=yes`
     );
   };
 
@@ -779,20 +766,31 @@ export default function OmniChannelSocialPublisher({ currentUserName, currentUse
                 </button>
               </div>
             ) : (
-              <label className="border-2 border-dashed border-slate-800 hover:border-indigo-500/60 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer bg-slate-950/40 hover:bg-slate-950 transition group">
-                <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-lg text-indigo-400 group-hover:scale-110 transition">
-                  🖼️
+              <label
+                htmlFor="media-file-input"
+                className="border-2 border-dashed border-slate-800 hover:border-indigo-500/60 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer bg-slate-950/40 hover:bg-slate-950 transition group select-none"
+              >
+                <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-lg text-indigo-400 group-hover:scale-110 group-hover:border-indigo-500/40 transition">
+                  📸
                 </div>
-                <span className="text-xs font-bold text-slate-300 mt-2">
+                <span className="text-xs font-bold text-slate-200 mt-2">
                   Upload Photo or Video for Post
                 </span>
                 <span className="text-[10px] text-slate-500 mt-0.5">
-                  Supports PNG, JPG, WEBP, MP4 (1080x1080 Square for Feed)
+                  Supports PNG, JPG, WEBP, MP4 (Instagram & Facebook Feed)
                 </span>
+                <div className="mt-2.5 px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-300 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition">
+                  <span>📁</span>
+                  <span>Browse File From Computer</span>
+                </div>
                 <input
+                  id="media-file-input"
                   type="file"
                   accept="image/*,video/*"
                   onChange={handleMediaUpload}
+                  onClick={(e: any) => {
+                    e.target.value = null;
+                  }}
                   className="hidden"
                 />
               </label>

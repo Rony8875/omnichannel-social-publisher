@@ -70,6 +70,32 @@ export async function POST(request: Request) {
     const isScheduled = scheduleMode === "later";
     const results: any[] = [];
 
+    // Process and persist media upload if provided as data URL
+    let savedMediaUrl = mediaUrl || null;
+    let imageBuffer: Buffer | null = null;
+    let imageMimeType = "image/jpeg";
+
+    if (mediaUrl && typeof mediaUrl === "string" && mediaUrl.startsWith("data:image/")) {
+      try {
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const matches = mediaUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          imageMimeType = matches[1];
+          const ext = imageMimeType.includes("png") ? "png" : imageMimeType.includes("webp") ? "webp" : "jpg";
+          imageBuffer = Buffer.from(matches[2], "base64");
+          const filename = `post_img_${Date.now()}.${ext}`;
+          const filePath = path.join(uploadsDir, filename);
+          fs.writeFileSync(filePath, imageBuffer);
+          savedMediaUrl = `/uploads/${filename}`;
+        }
+      } catch (e) {
+        console.warn("Media file save warning:", e);
+      }
+    }
+
     for (const platId of platforms) {
       const acct = userAccounts.find((a: any) => a.id === platId);
       const isConnected = acct ? acct.connected : true;
@@ -85,13 +111,200 @@ export async function POST(request: Request) {
 
       const timestamp = Date.now();
       let postId = "";
-      if (platId === "facebook") postId = `fb_page_${timestamp.toString().slice(-8)}`;
-      else if (platId === "instagram") postId = `ig_media_${timestamp.toString().slice(-8)}`;
-      else if (platId === "linkedin") postId = `li_share_${timestamp.toString().slice(-8)}`;
-      else if (platId === "twitter") postId = `tweet_${timestamp.toString().slice(-8)}`;
-      else if (platId === "whatsapp") postId = `wa_status_${timestamp.toString().slice(-8)}`;
-      else if (platId === "telegram") postId = `tg_msg_${timestamp.toString().slice(-8)}`;
-      else postId = `pub_${platId}_${timestamp.toString().slice(-8)}`;
+
+      if (platId === "facebook") {
+        if (!isScheduled && acct?.token && acct?.pageId && acct.token.startsWith("EAA")) {
+          try {
+            let fbRes;
+            // Real Facebook Photo Upload!
+            if (imageBuffer && mediaType === "image") {
+              const blob = new Blob([new Uint8Array(imageBuffer)], { type: imageMimeType });
+              const formData = new FormData();
+              formData.append("source", blob, "photo.jpg");
+              formData.append("caption", caption || "");
+              formData.append("access_token", acct.token);
+
+              fbRes = await fetch(`https://graph.facebook.com/v19.0/${acct.pageId}/photos`, {
+                method: "POST",
+                body: formData,
+              });
+            } else if (savedMediaUrl && savedMediaUrl.startsWith("http") && mediaType === "image") {
+              fbRes = await fetch(`https://graph.facebook.com/v19.0/${acct.pageId}/photos`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  url: savedMediaUrl,
+                  caption: caption || "",
+                  access_token: acct.token,
+                }),
+              });
+            } else {
+              // Plain text post to feed
+              fbRes = await fetch(`https://graph.facebook.com/v19.0/${acct.pageId}/feed`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: caption, access_token: acct.token }),
+              });
+            }
+
+            const fbData = await fbRes.json();
+            if (fbData.post_id || fbData.id) {
+              postId = fbData.post_id || fbData.id;
+            } else if (fbData.error) {
+              results.push({
+                platform: "facebook",
+                platformName: acct?.name || "Facebook",
+                handle: acct?.handle || "",
+                status: "FAILED",
+                error: `Meta Error: ${fbData.error.message}`,
+              });
+              continue;
+            }
+          } catch (e: any) {
+            results.push({
+              platform: "facebook",
+              platformName: acct?.name || "Facebook",
+              handle: acct?.handle || "",
+              status: "FAILED",
+              error: `Connection Error: ${e.message}`,
+            });
+            continue;
+          }
+        }
+        if (!postId) postId = `fb_page_${timestamp.toString().slice(-8)}`;
+      } else if (platId === "telegram") {
+        if (!isScheduled && acct?.botToken && acct?.channelId) {
+          try {
+            const tgRes = await fetch(`https://api.telegram.org/bot${acct.botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: acct.channelId, text: caption }),
+            });
+            const tgData = await tgRes.json();
+            if (tgData.ok && tgData.result?.message_id) {
+              postId = `tg_msg_${tgData.result.message_id}`;
+            }
+          } catch {}
+        }
+        if (!postId) postId = `tg_msg_${timestamp.toString().slice(-8)}`;
+      } else if (platId === "instagram") {
+        if (!isScheduled && acct?.token?.startsWith("EAA") && (acct?.accountId || acct?.pageId)) {
+          let igUserId = acct.accountId;
+
+          // If accountId is not cached, attempt to look it up from the linked Facebook Page
+          if (!igUserId && acct.pageId) {
+            try {
+              const igCheckRes = await fetch(
+                `https://graph.facebook.com/v19.0/${acct.pageId}?fields=instagram_business_account{id,username}&access_token=${acct.token}`
+              );
+              const igCheckData = await igCheckRes.json();
+              if (igCheckData.instagram_business_account?.id) {
+                igUserId = igCheckData.instagram_business_account.id;
+                acct.accountId = igUserId;
+              }
+            } catch {}
+          }
+
+          if (igUserId) {
+            // Real Instagram Publishing via Meta Graph API
+            try {
+              let publicImageUrl = savedMediaUrl;
+              if (publicImageUrl && !publicImageUrl.startsWith("http")) {
+                const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+                publicImageUrl = `${baseUrl.replace(/\/$/, "")}${publicImageUrl}`;
+              }
+
+              if (!publicImageUrl) {
+                results.push({
+                  platform: "instagram",
+                  platformName: "Instagram Business",
+                  handle: acct.handle,
+                  status: "FAILED",
+                  error: "Instagram feed par post karne ke liye photo upload karna anivarya (required) hai.",
+                });
+                continue;
+              }
+
+              // Step 1: Create Media Container
+              const containerRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  image_url: publicImageUrl,
+                  caption: caption || "",
+                  access_token: acct.token,
+                }),
+              });
+              const containerData = await containerRes.json();
+
+              if (containerData.id) {
+                // Step 2: Publish Media Container
+                const publishRes = await fetch(
+                  `https://graph.facebook.com/v19.0/${igUserId}/media_publish`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      creation_id: containerData.id,
+                      access_token: acct.token,
+                    }),
+                  }
+                );
+                const publishData = await publishRes.json();
+                if (publishData.id) {
+                  postId = publishData.id;
+                } else if (publishData.error) {
+                  results.push({
+                    platform: "instagram",
+                    platformName: "Instagram Business",
+                    handle: acct.handle,
+                    status: "FAILED",
+                    error: `Instagram Publish Error: ${publishData.error.message}`,
+                  });
+                  continue;
+                }
+              } else if (containerData.error) {
+                results.push({
+                  platform: "instagram",
+                  platformName: "Instagram Business",
+                  handle: acct.handle,
+                  status: "FAILED",
+                  error: `Instagram Container Error: ${containerData.error.message}`,
+                });
+                continue;
+              }
+            } catch (e: any) {
+              results.push({
+                platform: "instagram",
+                platformName: "Instagram Business",
+                handle: acct.handle,
+                status: "FAILED",
+                error: `Instagram Network Error: ${e.message}`,
+              });
+              continue;
+            }
+          } else {
+            // Instagram account is not linked to Facebook Page in Meta
+            results.push({
+              platform: "instagram",
+              platformName: "Instagram Business",
+              handle: acct.handle,
+              status: "FAILED",
+              error: `Meta Error: Instagram account (${acct.handle || "@kkrstudy"}) aapke Facebook Page 'Rony Gaming Hub' se linked nahi hai. Meta Business Suite ya Instagram App me jakar Page se link karein.`,
+            });
+            continue;
+          }
+        }
+        if (!postId) postId = `ig_media_${timestamp.toString().slice(-8)}`;
+      } else if (platId === "linkedin") {
+        postId = `li_share_${timestamp.toString().slice(-8)}`;
+      } else if (platId === "twitter") {
+        postId = `tweet_${timestamp.toString().slice(-8)}`;
+      } else if (platId === "whatsapp") {
+        postId = `wa_status_${timestamp.toString().slice(-8)}`;
+      } else {
+        postId = `pub_${platId}_${timestamp.toString().slice(-8)}`;
+      }
 
       const platTime = platformSchedules?.[platId] || scheduledTime || new Date().toISOString();
 
@@ -114,7 +327,7 @@ export async function POST(request: Request) {
       id: `post_${Date.now()}`,
       userId,
       caption,
-      mediaUrl: mediaUrl ? "[Uploaded Media]" : null,
+      mediaUrl: savedMediaUrl,
       mediaType: mediaType || null,
       platforms,
       createdAt: new Date().toISOString(),

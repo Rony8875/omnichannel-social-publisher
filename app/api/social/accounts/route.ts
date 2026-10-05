@@ -70,6 +70,71 @@ export async function POST(request: Request) {
         account: accounts[index],
         accounts,
       });
+    } else if (action === "telegram_verify") {
+      const { botToken, channelId: tgChannelId } = body;
+      if (!botToken || !botToken.includes(":")) {
+        return NextResponse.json(
+          { success: false, error: "Kripya valid Telegram Bot Token enter karein (@BotFather se)!" },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const tgRes = await fetch(`https://api.telegram.org/bot${botToken.trim()}/getMe`);
+        const tgData = await tgRes.json();
+        if (!tgData.ok) {
+          return NextResponse.json(
+            { success: false, error: `Telegram Bot Verification Failed: ${tgData.description}` },
+            { status: 400 }
+          );
+        }
+
+        const botUsername = tgData.result?.username ? `@${tgData.result.username}` : "@TelegramBot";
+        const cleanChannel = tgChannelId ? tgChannelId.trim() : botUsername;
+
+        accounts[index].connected = true;
+        accounts[index].handle = cleanChannel;
+        accounts[index].botToken = botToken.trim();
+        accounts[index].channelId = cleanChannel;
+        accounts[index].verifiedAt = new Date().toISOString();
+
+        await saveUserSocialAccounts(userId, accounts);
+
+        return NextResponse.json({
+          success: true,
+          message: `🎉 Telegram Bot ${botUsername} successfully verified! Channel: ${cleanChannel}`,
+          account: accounts[index],
+          accounts,
+        });
+      } catch (e: any) {
+        return NextResponse.json(
+          { success: false, error: `Telegram ping error: ${e.message}` },
+          { status: 500 }
+        );
+      }
+    } else if (action === "token_direct") {
+      const { directToken, directHandle, directPageId } = body;
+      if (!directToken && !directHandle) {
+        return NextResponse.json(
+          { success: false, error: "Kripya token ya handle enter karein!" },
+          { status: 400 }
+        );
+      }
+
+      accounts[index].connected = true;
+      if (directHandle) accounts[index].handle = directHandle.trim();
+      if (directToken) accounts[index].token = directToken.trim();
+      if (directPageId) accounts[index].pageId = directPageId.trim();
+      accounts[index].verifiedAt = new Date().toISOString();
+
+      await saveUserSocialAccounts(userId, accounts);
+
+      return NextResponse.json({
+        success: true,
+        message: `🎉 ${accounts[index].name} successfully linked with token!`,
+        account: accounts[index],
+        accounts,
+      });
     } else if (action === "test_connection") {
       let isLive = false;
       let status = "DISCONNECTED";
