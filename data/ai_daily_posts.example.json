@@ -1,0 +1,21 @@
+{
+  "posts": [
+    {
+      "id": "ai_post_1",
+      "postNum": 1,
+      "tag": "Viral Growth Hook",
+      "title": "5x Growth Strategy for Social Media",
+      "caption": "🔥 Stop wasting hours on manual posting! Automate workflows across all channels in 1 click.",
+      "hashtags": "#SocialMediaGrowth #DigitalMarketing #BusinessAutomation",
+      "mediaType": "video",
+      "videoDuration": 5,
+      "videoTheme": "neon-cyber",
+      "videoText": "Publish Everywhere in 1-Click 🚀",
+      "mediaUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "platforms": ["instagram", "facebook"],
+      "isApproved": false,
+      "isPublished": false
+    }
+  ],
+  "archive": []
+}

@@ -314,7 +314,18 @@ export async function fetchUserSocialAccounts(userId: string) {
       const userLocal = localAccounts.filter(
         (a: any) => (a.userId || "admin_1") === cleanUserId
       );
-      if (userLocal.length > 0) return userLocal;
+      if (userLocal.length > 0) {
+        if (process.env.INSTAGRAM_ACCESS_TOKEN) {
+          const ig = userLocal.find((a: any) => a.id === "instagram");
+          if (ig) {
+            ig.connected = true;
+            ig.token = process.env.INSTAGRAM_ACCESS_TOKEN;
+            if (process.env.INSTAGRAM_ACCOUNT_ID) ig.accountId = process.env.INSTAGRAM_ACCOUNT_ID;
+            if (process.env.INSTAGRAM_HANDLE) ig.handle = process.env.INSTAGRAM_HANDLE;
+          }
+        }
+        return userLocal;
+      }
     } catch {}
   }
 

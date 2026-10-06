@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
-import { fetchUserSocialAccounts, saveUserSocialAccounts } from "@/lib/bigquery";
+import { fetchUserSocialAccounts, saveUserSocialAccounts } from "@/lib/supabase";
 
 function getBaseUrl(request: Request): string {
+  const host = request.headers.get("host");
+  if (host) {
+    const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+    return `${protocol}://${host}`;
+  }
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
   }
-  const host = request.headers.get("host") || "localhost:3000";
-  const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
-  return `${protocol}://${host}`;
+  return "http://localhost:3001";
 }
 
 function renderHtmlResponse({
@@ -134,14 +137,20 @@ export async function GET(
     // 1. FACEBOOK & INSTAGRAM CALLBACK
     // =========================================================================
     if (platform === "facebook" || platform === "instagram") {
-      const appId = process.env.META_APP_ID || process.env.FACEBOOK_APP_ID;
-      const appSecret = process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
+      const appId =
+        platform === "instagram"
+          ? process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID || process.env.FACEBOOK_APP_ID
+          : process.env.META_APP_ID || process.env.FACEBOOK_APP_ID;
+      const appSecret =
+        platform === "instagram"
+          ? process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET
+          : process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
 
       if (!appId || !appSecret) {
         return renderHtmlResponse({
           success: false,
           platform,
-          message: "META_APP_ID / META_APP_SECRET missing on server.",
+          message: `${platform === "instagram" ? "INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET" : "META_APP_ID / META_APP_SECRET"} missing on server.`,
         });
       }
 

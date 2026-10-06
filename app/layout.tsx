@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Anant Reach - WhatsApp & Social Media Platform",
+  title: "Anant Reach - Social Media & Multi-Channel Platform",
   description: "Anant Reach - Smart Multi-channel WhatsApp & Social Media Publishing Platform",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
     title: "Anant Reach",
   },
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/anant-reach-logo.png",
+    shortcut: "/anant-reach-logo.png",
+    apple: "/anant-reach-logo.png",
   },
 };
 

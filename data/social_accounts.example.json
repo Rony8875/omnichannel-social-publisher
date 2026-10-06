@@ -1,0 +1,67 @@
+{
+  "accounts": [
+    {
+      "userId": "admin_1",
+      "id": "facebook",
+      "platform": "Facebook",
+      "name": "Facebook Business Page",
+      "handle": "Your Facebook Page",
+      "connected": false,
+      "icon": "facebook",
+      "pageId": "",
+      "token": ""
+    },
+    {
+      "userId": "admin_1",
+      "id": "instagram",
+      "platform": "Instagram",
+      "name": "Instagram Business",
+      "handle": "@yourhandle",
+      "connected": false,
+      "icon": "instagram",
+      "accountId": "",
+      "token": ""
+    },
+    {
+      "userId": "admin_1",
+      "id": "linkedin",
+      "platform": "LinkedIn",
+      "name": "LinkedIn Company Page",
+      "handle": "",
+      "connected": false,
+      "icon": "linkedin",
+      "pageId": "",
+      "token": ""
+    },
+    {
+      "userId": "admin_1",
+      "id": "twitter",
+      "platform": "X / Twitter",
+      "name": "X (Twitter) Profile",
+      "handle": "",
+      "connected": false,
+      "icon": "twitter",
+      "token": ""
+    },
+    {
+      "userId": "admin_1",
+      "id": "whatsapp",
+      "platform": "WhatsApp",
+      "name": "WhatsApp Status & Broadcast",
+      "handle": "",
+      "connected": false,
+      "icon": "whatsapp"
+    },
+    {
+      "userId": "admin_1",
+      "id": "telegram",
+      "platform": "Telegram",
+      "name": "Telegram Announcement Channel",
+      "handle": "",
+      "connected": false,
+      "icon": "telegram",
+      "channelId": "",
+      "botToken": ""
+    }
+  ]
+}

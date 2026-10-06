@@ -45,3 +45,9 @@ wa_sessions/
 credentials/
 *.json.key
 *.ndjson
+
+# Local Data & Secrets (Keeps tokens safe locally while pushing clean codebase)
+data/*.json
+!data/*.example.json
+public/uploads/*
+!public/uploads/.gitkeep

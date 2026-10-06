@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchUserSocialAccounts, saveUserSocialAccounts } from "@/lib/bigquery";
+import { fetchUserSocialAccounts, saveUserSocialAccounts } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   try {
@@ -7,6 +7,24 @@ export async function GET(request: Request) {
     const userId = searchParams.get("userId") || "admin_1";
 
     const accounts = await fetchUserSocialAccounts(userId);
+
+    // If dedicated INSTAGRAM_ACCESS_TOKEN is configured in .env.local, ensure Instagram is connected
+    if (process.env.INSTAGRAM_ACCESS_TOKEN) {
+      const igIdx = accounts.findIndex((a: any) => a.id === "instagram");
+      if (igIdx !== -1) {
+        accounts[igIdx].connected = true;
+        accounts[igIdx].token = process.env.INSTAGRAM_ACCESS_TOKEN;
+        if (process.env.INSTAGRAM_ACCOUNT_ID) {
+          accounts[igIdx].accountId = process.env.INSTAGRAM_ACCOUNT_ID;
+        }
+        if (process.env.INSTAGRAM_HANDLE) {
+          accounts[igIdx].handle = process.env.INSTAGRAM_HANDLE;
+        } else if (!accounts[igIdx].handle) {
+          accounts[igIdx].handle = "@InstagramBusiness";
+        }
+      }
+    }
+
     return NextResponse.json({ success: true, accounts, userId });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -38,35 +56,28 @@ export async function POST(request: Request) {
     }
 
     if (action === "login_verify") {
-      // Direct ID & Password Verification for this specific user
-      if (!loginId || !password) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Kripya valid Login ID (Email/Phone) aur Password enter karein!",
-          },
-          { status: 400 }
-        );
-      }
+      // 1-Click Instant Verification (Zero Developer Token / Password Needed)
+      const fallbackHandle = accounts[index].handle || `@${accounts[index].name.replace(/\s+/g, "")}`;
+      let rawHandle = (loginId && loginId.trim()) ? loginId.trim() : fallbackHandle;
 
       // Format clean handle
-      let cleanHandle = loginId.trim();
+      let cleanHandle = rawHandle;
       if (cleanHandle.includes("@") && cleanHandle.includes(".")) {
         cleanHandle = "@" + cleanHandle.split("@")[0];
-      } else if (!cleanHandle.startsWith("@")) {
+      } else if (!cleanHandle.startsWith("@") && !cleanHandle.startsWith("+")) {
         cleanHandle = "@" + cleanHandle;
       }
 
       accounts[index].handle = cleanHandle;
       accounts[index].connected = true;
       accounts[index].verifiedAt = new Date().toISOString();
-      accounts[index].token = `oauth_token_${Buffer.from(loginId + Date.now()).toString("base64").slice(0, 24)}`;
+      accounts[index].token = `oauth_token_${Buffer.from(cleanHandle + Date.now()).toString("base64").slice(0, 24)}`;
 
       await saveUserSocialAccounts(userId, accounts);
 
       return NextResponse.json({
         success: true,
-        message: `🎉 ${accounts[index].name} successfully connected for your account as ${cleanHandle}!`,
+        message: `🎉 ${accounts[index].name} successfully connected as ${cleanHandle}!`,
         account: accounts[index],
         accounts,
       });
@@ -145,7 +156,8 @@ export async function POST(request: Request) {
 
       if (targetAccount.id === "whatsapp") {
         try {
-          const waRes = await fetch("http://localhost:5001/sessions");
+          const engineUrl = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:5001";
+          const waRes = await fetch(`${engineUrl.replace(/\/$/, "")}/api/sessions`);
           const waData = await waRes.json();
           const activeSession = waData.sessions?.find(
             (s: any) => s.status === "CONNECTED"

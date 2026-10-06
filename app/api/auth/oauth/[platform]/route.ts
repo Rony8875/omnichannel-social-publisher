@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 
 // Base redirect URI resolver
 function getBaseUrl(request: Request): string {
+  const host = request.headers.get("host");
+  if (host) {
+    const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+    return `${protocol}://${host}`;
+  }
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
   }
-  const host = request.headers.get("host") || "localhost:3000";
-  const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
-  return `${protocol}://${host}`;
+  return "http://localhost:3001";
 }
 
 export async function GET(
@@ -33,22 +36,30 @@ export async function GET(
       return NextResponse.redirect(new URL(`/oauth/telegram?userId=${encodeURIComponent(userId)}`, request.url));
     }
 
-    // 3. Instagram OAuth via Meta Graph API (Official Buffer/Hootsuite flow)
+    // 3. Instagram OAuth (Official Direct Instagram / Meta flow)
     if (platform === "instagram") {
-      const appId = process.env.META_APP_ID || process.env.FACEBOOK_APP_ID;
+      const appId = process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID || process.env.FACEBOOK_APP_ID;
       if (!appId) {
         return NextResponse.redirect(
           new URL(`/oauth/instagram?userId=${encodeURIComponent(userId)}&missing_keys=true`, request.url)
         );
       }
 
-      // Meta Dialog OAuth with Instagram permissions
+      // If dedicated INSTAGRAM_APP_ID is provided, use official api.instagram.com OAuth flow
+      if (process.env.INSTAGRAM_APP_ID) {
+        const instaOAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(
+          redirectUri
+        )}&scope=user_profile,user_media&response_type=code&state=${state}`;
+        return NextResponse.redirect(instaOAuthUrl);
+      }
+
+      // Fallback: Meta Dialog OAuth with Instagram permissions (Facebook Login)
       const scopes = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
-      const instaOAuthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(
+      const metaOAuthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(
         redirectUri
       )}&state=${state}&scope=${encodeURIComponent(scopes)}&response_type=code`;
 
-      return NextResponse.redirect(instaOAuthUrl);
+      return NextResponse.redirect(metaOAuthUrl);
     }
 
     // 4. Facebook (Meta Graph API OAuth 2.0)

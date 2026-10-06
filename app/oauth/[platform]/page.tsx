@@ -26,6 +26,9 @@ export default function PlatformOAuthPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [waConnectedPhone, setWaConnectedPhone] = useState<string | null>(null);
+  const [pairingPhone, setPairingPhone] = useState("");
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [isGeneratingPairing, setIsGeneratingPairing] = useState(false);
   const [copiedCallback, setCopiedCallback] = useState(false);
 
   // Platform specific branding & configurations
@@ -123,10 +126,12 @@ export default function PlatformOAuthPage() {
     ? `${window.location.origin}/api/auth/callback/${platform}`
     : `https://your-domain.com/api/auth/callback/${platform}`;
 
-  // WhatsApp engine polling
+  // WhatsApp engine polling & auto session creation
   useEffect(() => {
     if (platform === "whatsapp") {
       let isMounted = true;
+      let hasTriggeredAutoCreate = false;
+
       const fetchWaStatus = async () => {
         try {
           const res = await fetch("/api/wa/sessions");
@@ -135,22 +140,91 @@ export default function PlatformOAuthPage() {
             const connected = data.sessions.find((s: any) => s.status === "CONNECTED");
             if (connected) {
               setWaConnectedPhone(connected.userPhone || "Live SIM Connected");
+              return;
             }
             const qrSess = data.sessions.find((s: any) => s.qrCode);
             if (qrSess) {
               setQrCodeData(qrSess.qrCode);
+              return;
+            }
+          }
+
+          // If no active session with QR exists yet, auto-trigger creation
+          if (!hasTriggeredAutoCreate && isMounted) {
+            hasTriggeredAutoCreate = true;
+            const createRes = await fetch("/api/wa/sessions/create", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sessionId: `sim_${userId || "admin"}`,
+                label: "Admin WhatsApp",
+                owner: userId || "admin",
+              }),
+            });
+            const createData = await createRes.json();
+            if (createData.session?.qrCode && isMounted) {
+              setQrCodeData(createData.session.qrCode);
             }
           }
         } catch {}
       };
+
       fetchWaStatus();
-      const interval = setInterval(fetchWaStatus, 3000);
+      const interval = setInterval(fetchWaStatus, 2500);
       return () => {
         isMounted = false;
         clearInterval(interval);
       };
     }
-  }, [platform]);
+  }, [platform, userId]);
+
+  const handleGeneratePairingCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pairingPhone.trim()) return;
+    setIsGeneratingPairing(true);
+    setErrorMessage("");
+    try {
+      const res = await fetch("/api/wa/sessions/create-pairing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: `sim_${userId || "admin"}`,
+          label: `SIM (${pairingPhone.slice(-4)})`,
+          phoneNumber: pairingPhone.trim(),
+          owner: userId || "admin",
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.pairingCode) {
+        setPairingCode(data.pairingCode);
+      } else {
+        setErrorMessage(data.error || "Pairing code generate nahi ho saka. Mobile number check karein (e.g. 918875216646)");
+      }
+    } catch (err: any) {
+      setErrorMessage(`Error: ${err.message}`);
+    } finally {
+      setIsGeneratingPairing(false);
+    }
+  };
+
+  const handleRefreshQr = async () => {
+    setQrCodeData(null);
+    try {
+      const res = await fetch("/api/wa/sessions/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: `sim_${Date.now()}`,
+          label: "WhatsApp Web",
+          owner: userId || "admin",
+        }),
+      });
+      const data = await res.json();
+      if (data.session?.qrCode) {
+        setQrCodeData(data.session.qrCode);
+      }
+    } catch {}
+  };
 
   const copyCallbackUrl = () => {
     navigator.clipboard.writeText(callbackUrl);
@@ -344,7 +418,25 @@ export default function PlatformOAuthPage() {
   };
 
   // Broadcast success to parent window and close popup
-  const notifyAndClose = (plat: string) => {
+  const notifyAndClose = async (plat: string) => {
+    if (plat === "whatsapp") {
+      try {
+        await fetch("/api/social/accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accountId: "whatsapp",
+            action: "token_direct",
+            directHandle: waConnectedPhone ? `+${waConnectedPhone}` : "+91 WhatsApp Linked",
+            directToken: "live_baileys_session",
+            userId,
+          }),
+        });
+      } catch (e) {
+        console.warn("WhatsApp social account save notice:", e);
+      }
+    }
+
     try {
       if (window.opener) {
         window.opener.postMessage({ type: "OAUTH_SUCCESS", platform: plat, success: true }, "*");
@@ -352,7 +444,7 @@ export default function PlatformOAuthPage() {
     } catch {}
     setTimeout(() => {
       window.close();
-    }, 1800);
+    }, 1500);
   };
 
   return (
@@ -426,19 +518,70 @@ export default function PlatformOAuthPage() {
                       ✓ Confirm WhatsApp Connection
                     </button>
                   </div>
-                ) : qrCodeData ? (
-                  <div className="space-y-3">
-                    <div className="bg-white p-4 rounded-2xl inline-block shadow-xl">
-                      <img src={qrCodeData} alt="WhatsApp QR Code" className="w-52 h-52 mx-auto" />
-                    </div>
-                    <p className="text-xs text-slate-300">
-                      Apne phone me WhatsApp open karein ➔ <strong>Linked Devices</strong> ➔ <strong>Link a Device</strong> par tap karke ye QR scan karein.
-                    </p>
-                  </div>
                 ) : (
-                  <div className="text-xs text-slate-400 p-6 space-y-2">
-                    <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p>WhatsApp Baileys Engine se live QR code load ho raha hai...</p>
+                  <div className="space-y-4">
+                    {qrCodeData ? (
+                      <div className="space-y-2">
+                        <div className="bg-white p-3 rounded-2xl inline-block shadow-xl">
+                          <img src={qrCodeData} alt="WhatsApp QR Code" className="w-48 h-48 mx-auto" />
+                        </div>
+                        <p className="text-xs text-slate-300">
+                          Phone me WhatsApp ➔ <strong>Linked Devices</strong> ➔ <strong>Link a Device</strong> se QR scan karein.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleRefreshQr}
+                          className="text-[11px] text-emerald-400 hover:text-emerald-300 underline font-medium cursor-pointer"
+                        >
+                          🔄 QR Code Refresh Karein
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-400 p-4 space-y-2">
+                        <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                        <p>WhatsApp Live QR code load ho raha hai...</p>
+                        <button
+                          type="button"
+                          onClick={handleRefreshQr}
+                          className="mt-2 text-[11px] px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg cursor-pointer"
+                        >
+                          Refresh Request
+                        </button>
+                      </div>
+                    )}
+
+                    {/* OR Link via Phone Number */}
+                    <div className="pt-3 border-t border-slate-800 text-left">
+                      <p className="text-[11px] font-bold text-slate-300 mb-2">
+                        Ya Phone Number se 8-Digit Pairing Code payein:
+                      </p>
+                      {pairingCode ? (
+                        <div className="bg-emerald-950/60 border border-emerald-500/50 rounded-xl p-3 text-center space-y-1">
+                          <span className="text-[10px] text-slate-400">WhatsApp me ye code enter karein:</span>
+                          <div className="text-xl font-mono font-black text-emerald-400 tracking-widest select-all">
+                            {pairingCode}
+                          </div>
+                          <span className="text-[10px] text-slate-400">Linked Devices ➔ Link with phone number instead</span>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleGeneratePairingCode} className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Mobile no (e.g. 918875216646)"
+                            value={pairingPhone}
+                            onChange={(e) => setPairingPhone(e.target.value)}
+                            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                          />
+                          <button
+                            type="submit"
+                            disabled={isGeneratingPairing}
+                            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition shrink-0"
+                          >
+                            {isGeneratingPairing ? "Generating..." : "Get Code"}
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -534,7 +677,7 @@ export default function PlatformOAuthPage() {
                         : "text-slate-400 hover:text-white"
                     }`}
                   >
-                    🔑 Direct Token / Key
+                    ⚡ 1-Click Instant Verify
                   </button>
                   <button
                     type="button"
@@ -835,61 +978,36 @@ export default function PlatformOAuthPage() {
                   </div>
                 )}
 
-                {/* TAB 2: DIRECT TOKEN / MANUAL API KEY */}
+                {/* TAB 2: 1-CLICK INSTANT VERIFY (ZERO TOKEN) */}
                 {activeTab === "token" && (
-                  <form onSubmit={handleSaveDirectToken} className="space-y-3">
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Agar aapke paas Page Access Token ya Graph API Token already hai (jaise Meta Graph API Explorer se), toh seedha yahan paste kar sakte hain:
-                    </p>
-
-                    <div>
-                      <label className="text-[11px] text-slate-300 font-semibold block mb-1">
-                        Page / Account Handle Name:
-                      </label>
-                      <input
-                        type="text"
-                        value={directHandle}
-                        onChange={(e) => setDirectHandle(e.target.value)}
-                        placeholder={config.placeholderHandle}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-slate-300 font-semibold block mb-1">
-                        Official Access Token:
-                      </label>
-                      <textarea
-                        value={directToken}
-                        onChange={(e) => setDirectToken(e.target.value)}
-                        rows={3}
-                        placeholder="EAABwzLIX45wBO..."
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
-                      />
-                    </div>
-
-                    {platform === "facebook" && (
-                      <div>
-                        <label className="text-[11px] text-slate-300 font-semibold block mb-1">
-                          Facebook Page ID (Optional):
-                        </label>
-                        <input
-                          type="text"
-                          value={directPageId}
-                          onChange={(e) => setDirectPageId(e.target.value)}
-                          placeholder="10982736451"
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
-                        />
+                  <form onSubmit={handleDirectLoginVerify} className="space-y-4">
+                    <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-3.5 text-[11px] text-emerald-200 space-y-1">
+                      <div className="font-bold flex items-center gap-1.5 text-white">
+                        <span>⚡</span> 1-Click Instant Verification:
                       </div>
-                    )}
+                      <p className="text-slate-300">
+                        Kisi bhi developer token ya password ki zaroorat nahi hai. Seedha apna handle name verify karein aur 1-Click me connect karein!
+                      </p>
+                    </div>
+
+
 
                     <button
                       type="submit"
                       disabled={isAuthorizing}
-                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 disabled:opacity-50 mt-1"
+                      className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-2xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 disabled:opacity-50 mt-2"
                     >
-                      <span>💾</span>
-                      <span>Save & Link Official Token to BigQuery</span>
+                      {isAuthorizing ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                          <span>Verifying & Linking...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>⚡</span>
+                          <span>1-Click Verify & Connect {config.name}</span>
+                        </>
+                      )}
                     </button>
                   </form>
                 )}

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import OmniChannelSocialPublisher from "@/components/OmniChannelSocialPublisher";
+import SocialAnalyticsDashboard from "@/components/SocialAnalyticsDashboard";
+import AIPostCreator from "@/components/AIPostCreator";
 
 interface UserProfile {
   id: string;
@@ -76,79 +78,77 @@ function AnantReachLogo({
   const isLg = size === "lg";
   const isSm = size === "sm";
 
+  if (isLg) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 group">
+        <div className="relative">
+          {/* Ambient Golden Amber Glow */}
+          <div className="absolute -inset-3 bg-gradient-to-r from-amber-500/35 via-orange-500/25 to-amber-500/35 rounded-full blur-2xl opacity-85 group-hover:opacity-100 transition duration-700 pointer-events-none"></div>
+
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-white border-4 border-amber-400 p-2 shadow-2xl flex items-center justify-center overflow-hidden group-hover:scale-105 transition duration-300">
+            <img
+              src="/thumbnail2.svg"
+              alt="Anant Reach Social Media"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+        <div>
+          <div className="text-2xl font-black tracking-tight">
+            <span className="text-white">Anant</span>{" "}
+            <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">
+              Reach
+            </span>
+          </div>
+          <div className="text-xs text-amber-300 font-bold uppercase tracking-wider mt-1">
+            Social Media Platform
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSm) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-white border border-amber-400 shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+          <img
+            src="/thumbnail2.svg"
+            alt="Anant Reach"
+            className="w-full h-full object-contain p-0.5"
+          />
+        </div>
+        <div className="text-sm font-black text-white flex items-center">
+          <span>Anant</span>
+          <span className="ml-1 text-amber-400">Reach</span>
+        </div>
+      </div>
+    );
+  }
+
+  // size === "md" (Used in top-left sidebar and header - Small Circle Box)
   return (
-    <div className={`flex items-center ${isLg ? "flex-col text-center gap-3.5" : "gap-3"}`}>
-      {/* Icon Squircle Badge with Ambient Glow */}
-      <div
-        className={`relative rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950/60 border border-emerald-500/30 flex items-center justify-center shadow-xl shadow-emerald-950/50 group hover:border-emerald-400/60 transition duration-300 shrink-0 ${
-          isLg ? "w-16 h-16" : isSm ? "w-8 h-8" : "w-11 h-11"
-        }`}
-      >
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-emerald-500/10 via-cyan-500/10 to-transparent pointer-events-none"></div>
-
-        <svg
-          className={isLg ? "w-9 h-9" : isSm ? "w-5 h-5" : "w-6 h-6"}
-          viewBox="0 0 40 40"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <linearGradient id={`anantGrad-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#10B981" />
-              <stop offset="50%" stopColor="#06B6D4" />
-              <stop offset="100%" stopColor="#6366F1" />
-            </linearGradient>
-            <filter id={`anantGlow-${size}`} x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="1.5" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
-          {/* Infinity Loop (Anant / Limitless) */}
-          <path
-            d="M13 25C9.68629 25 7 22.3137 7 19C7 15.6863 9.68629 13 13 13C17.5 13 22.5 25 27 25C30.3137 25 33 22.3137 33 19C33 15.6863 30.3137 13 27 13C22.5 13 17.5 25 13 25Z"
-            stroke={`url(#anantGrad-${size})`}
-            strokeWidth="3.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter={`url(#anantGlow-${size})`}
-          />
-
-          {/* Broadcast Reach Wave */}
-          <path
-            d="M24 9.5C28 10.8 31.2 14 32.5 18"
-            stroke="#06B6D4"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            opacity="0.9"
-          />
-
-          {/* Interconnected Broadcast Nodes */}
-          <circle cx="13" cy="19" r="2.2" fill="#10B981" />
-          <circle cx="20" cy="19" r="2.2" fill="#06B6D4" />
-          <circle cx="27" cy="19" r="2.2" fill="#818CF8" />
-        </svg>
+    <div className="flex items-center gap-3 group">
+      {/* Small circle box with newly uploaded SVG logo */}
+      <div className="w-11 h-11 rounded-full bg-white border-2 border-amber-400 shadow-lg shadow-black/20 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 group-hover:border-amber-300 transition duration-300">
+        <img
+          src="/thumbnail2.svg"
+          alt="Anant Reach Logo"
+          className="w-full h-full object-contain p-1"
+        />
       </div>
 
-      {/* Typography */}
-      <div>
-        <div
-          className={`leading-none flex items-center ${
-            isLg ? "justify-center text-3xl font-black" : isSm ? "text-sm font-bold" : "text-lg font-extrabold"
-          } tracking-tight`}
-        >
+      <div className="min-w-0">
+        <div className="leading-none flex items-center text-lg font-black tracking-tight">
           <span className="text-white">Anant</span>
-          <span className="ml-1.5 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+          <span className="ml-1.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">
             Reach
           </span>
         </div>
         {showSubtitle && (
-          <div
-            className={`text-[10px] tracking-wider text-slate-400 uppercase font-semibold mt-1 ${
-              isLg ? "text-center" : ""
-            }`}
-          >
-            Omni-Channel Engine
+          <div className="text-[10px] tracking-wider text-amber-300 font-extrabold uppercase mt-1 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Social Media Platform</span>
           </div>
         )}
       </div>
@@ -158,14 +158,17 @@ function AnantReachLogo({
 
 export default function MultiTenantWhatsAppSystem() {
   // Authentication State
+  // Session Hydration Check (Prevents Login Page Blinking on Refresh)
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [loginUsername, setLoginUsername] = useState<string>("");
   const [loginPassword, setLoginPassword] = useState<string>("");
   const [loginError, setLoginError] = useState<string>("");
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
-  // Active View Tab: 'sender' (WhatsApp Campaigns) vs 'social' (Omni Social Media) vs 'admin' (User Management)
-  const [activeTab, setActiveTab] = useState<"admin" | "sender" | "social">("sender");
+  // Active View Tab: 'dashboard' vs 'social' vs 'reel' (Reel Studio) vs 'ai_creator' vs 'sender' vs 'admin'
+  const [activeTab, setActiveTab] = useState<"dashboard" | "social" | "reel" | "ai_creator" | "sender" | "admin">("dashboard");
+  const [prefillPostData, setPrefillPostData] = useState<any>(null);
 
   // ENGINE MODE: 'meta' (Official Meta Cloud API) vs 'sim' (Self-Hosted Private SIM Pool)
   const [engineMode, setEngineMode] = useState<"meta" | "sim">("meta");
@@ -300,15 +303,19 @@ export default function MultiTenantWhatsAppSystem() {
     }
   };
 
-  // Check saved session in localStorage
+  // Check saved session in localStorage (Zero Blink Session Restore)
   useEffect(() => {
-    const saved = localStorage.getItem("whatsapp_saas_user");
-    if (saved) {
-      try {
+    try {
+      const saved = localStorage.getItem("whatsapp_saas_user");
+      if (saved) {
         const u = JSON.parse(saved);
         setCurrentUser(u);
-        setActiveTab("sender");
-      } catch (e) {}
+        setActiveTab("dashboard");
+      }
+    } catch (e) {
+      console.warn("Session restore notice", e);
+    } finally {
+      setIsAuthLoading(false);
     }
   }, []);
 
@@ -1304,21 +1311,44 @@ export default function MultiTenantWhatsAppSystem() {
 
 
   // =========================================================================
+  // ZERO-BLINK HYDRATION SCREEN
+  // =========================================================================
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-[#070a13] text-slate-100 font-sans flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative rounded-3xl bg-[#090d18] border border-amber-500/40 p-3 shadow-2xl ">
+            <img
+              src="/anant-reach-logo.png"
+              alt="Anant Reach"
+              className="w-56 h-auto object-contain animate-pulse drop-shadow-[0_4px_20px_rgba(245,158,11,0.35)]"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-amber-300 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            <span>Loading Anant Reach Workspace...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
   // VIEW 1: LOGIN PAGE
   // =========================================================================
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+      <div className="min-h-screen bg-[#070a13] text-slate-100 font-sans flex items-center justify-center p-4">
+        <div className="bg-[#0a0f1d] border border-amber-500/35 rounded-3xl p-8 max-w-md w-full shadow-2xl shadow-amber-950/50">
           <div className="flex flex-col items-center text-center mb-6">
             <AnantReachLogo size="lg" showSubtitle={true} />
-            <p className="text-xs text-slate-400 mt-2">
-              WhatsApp & Omni Social Publishing Platform
+            <p className="text-xs text-amber-200/80 font-medium mt-3">
+              Social Media Publishing & WhatsApp Automation Hub
             </p>
           </div>
 
           {loginError && (
-            <div className="mb-4 p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-xs text-rose-300">
+            <div className="mb-4 p-3 bg-[#2a0e16] border border-rose-800 rounded-xl text-xs text-rose-300">
               {loginError}
             </div>
           )}
@@ -1331,7 +1361,7 @@ export default function MultiTenantWhatsAppSystem() {
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[#070a13] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
               />
             </div>
 
@@ -1342,16 +1372,16 @@ export default function MultiTenantWhatsAppSystem() {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[#070a13] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-lg shadow-emerald-950/50"
+              className="w-full py-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-black rounded-xl transition cursor-pointer shadow-lg shadow-amber-950/60"
             >
-              {isLoggingIn ? "Logging in..." : "Login to Portal"}
+              {isLoggingIn ? "Logging in..." : "Login to Anant Reach Portal"}
             </button>
           </form>
         </div>
@@ -1365,12 +1395,13 @@ export default function MultiTenantWhatsAppSystem() {
   const freeTierRemaining = Math.max(0, metaConfig.freeTierTotal - (metaConfig.freeTierUsed || 0));
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#070a13] text-slate-100 font-sans flex flex-col lg:flex-row">
+
       {/* Mobile Drawer Overlay */}
       {isMobileSidebarOpen && (
         <div
           onClick={() => setIsMobileSidebarOpen(false)}
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/90  z-40 lg:hidden"
         ></div>
       )}
 
@@ -1378,73 +1409,80 @@ export default function MultiTenantWhatsAppSystem() {
           LEFT VERTICAL NAVIGATION BAR (SIDEBAR)
           ========================================================================= */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-slate-900 border-r border-slate-800 p-5 flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-[#0b1020] border-r border-slate-700 p-5 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out relative ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Brand Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div className="relative pb-3 border-b border-slate-700">
             <AnantReachLogo size="md" showSubtitle={true} />
             {/* Close button on mobile */}
             <button
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="lg:hidden text-slate-400 hover:text-white p-1 text-sm cursor-pointer"
+              className="lg:hidden absolute top-2 right-2 text-slate-300 hover:text-white p-1 text-sm cursor-pointer bg-slate-800 rounded-lg"
             >
               ✕
             </button>
           </div>
 
           {/* User Profile Card */}
-          <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3 shadow-inner">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-bold text-white text-xs shadow-md shrink-0">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-3 flex items-center gap-3 shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-black text-white text-xs shadow-md shrink-0">
               {currentUser.name.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+              <div className="text-xs font-black text-white truncate flex items-center gap-1.5">
                 <span className="truncate">{currentUser.name}</span>
                 {currentUser.role === "admin" ? (
-                  <span className="text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                  <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-mono font-bold">
                     ADMIN
                   </span>
                 ) : (
-                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-mono font-bold">
                     CLIENT
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-slate-400 truncate">@{currentUser.username}</div>
+              <div className="text-[11px] text-slate-300 font-mono truncate">@{currentUser.username}</div>
             </div>
           </div>
 
           {/* VERTICAL NAVIGATION TABS */}
           <div className="space-y-1.5">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2 mb-2">
+            <div className="text-[11px] font-black text-slate-300 uppercase tracking-wider px-2 mb-2">
               Navigation Menu
             </div>
 
-            {/* Vertical Tab 1: WhatsApp Campaigns */}
+            {/* Vertical Tab 1: Dashboard (Views & Analytics) */}
             <button
               onClick={() => {
-                setActiveTab("sender");
+                setActiveTab("dashboard");
                 setIsMobileSidebarOpen(false);
               }}
               className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
-                activeTab === "sender"
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-950/60 font-bold border-l-4 border-emerald-300"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/70"
+                activeTab === "dashboard"
+                  ? "bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white shadow-lg shadow-amber-950/60 font-black border-l-4 border-amber-300"
+                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
               }`}
             >
-              <span className="text-lg">🚀</span>
+              <span className="text-lg">📊</span>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold leading-tight">WhatsApp Campaigns</div>
-                <div className={`text-[10px] truncate ${activeTab === "sender" ? "text-emerald-100" : "text-slate-500"}`}>
-                  Meta API & SIM Farm
+                <div className="text-xs font-bold leading-tight flex items-center justify-between">
+                  <span>Dashboard</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                    activeTab === "dashboard" ? "bg-white/20 text-white" : "bg-amber-950 text-amber-300 border border-amber-500/30"
+                  }`}>
+                    ANALYTICS
+                  </span>
+                </div>
+                <div className={`text-[10px] truncate ${activeTab === "dashboard" ? "text-amber-100" : "text-slate-400 font-medium"}`}>
+                  Views, Reach & Insights
                 </div>
               </div>
             </button>
 
-            {/* Vertical Tab 2: Omni-Post (All Socials) */}
+            {/* Vertical Tab 2: Post Studio (Renamed from Omni-Post Studio) */}
             <button
               onClick={() => {
                 setActiveTab("social");
@@ -1452,22 +1490,106 @@ export default function MultiTenantWhatsAppSystem() {
               }}
               className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
                 activeTab === "social"
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-950/60 font-bold border-l-4 border-indigo-300"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/70"
+                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-950/60 font-black border-l-4 border-indigo-300"
+                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
               }`}
             >
-              <span className="text-lg">🌐</span>
+              <span className="text-lg">✍️</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold leading-tight flex items-center justify-between">
-                  <span>Omni-Post Studio</span>
+                  <span>Post Studio</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
                     activeTab === "social" ? "bg-white/20 text-white" : "bg-indigo-950 text-indigo-300 border border-indigo-500/30"
                   }`}>
-                    1-CLICK
+                    PUBLISH
                   </span>
                 </div>
-                <div className={`text-[10px] truncate ${activeTab === "social" ? "text-indigo-100" : "text-slate-500"}`}>
-                  FB, Insta, LinkedIn, X, TG
+                <div className={`text-[10px] truncate ${activeTab === "social" ? "text-indigo-100" : "text-slate-400 font-medium"}`}>
+                  FB, Insta, WA, LinkedIn, X, TG
+                </div>
+              </div>
+            </button>
+
+            {/* Vertical Tab 2.5: Reel Studio (Instagram & Facebook Reels 9:16) */}
+            <button
+              onClick={() => {
+                setActiveTab("reel");
+                setIsMobileSidebarOpen(false);
+              }}
+              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+                activeTab === "reel"
+                  ? "bg-gradient-to-r from-pink-600 via-rose-600 to-purple-600 text-white shadow-lg shadow-pink-950/60 font-black border-l-4 border-pink-300"
+                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+              }`}
+            >
+              <span className="text-lg">🎬</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold leading-tight flex items-center justify-between">
+                  <span>Reel Studio</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                    activeTab === "reel" ? "bg-white/20 text-white" : "bg-pink-950 text-pink-300 border border-pink-500/30"
+                  }`}>
+                    9:16 REEL
+                  </span>
+                </div>
+                <div className={`text-[10px] truncate ${activeTab === "reel" ? "text-pink-100" : "text-slate-400 font-medium"}`}>
+                  Insta & FB Viral Reels
+                </div>
+              </div>
+            </button>
+
+            {/* Vertical Tab 3: AI Auto Creator (Gemini Daily 5 Posts & 5s Reels) */}
+            <button
+              onClick={() => {
+                setActiveTab("ai_creator");
+                setIsMobileSidebarOpen(false);
+              }}
+              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+                activeTab === "ai_creator"
+                  ? "bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 text-white shadow-lg shadow-purple-950/60 font-black border-l-4 border-pink-300"
+                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+              }`}
+            >
+              <span className="text-lg">🤖</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold leading-tight flex items-center justify-between">
+                  <span>AI Post Creator</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                    activeTab === "ai_creator" ? "bg-white/20 text-white" : "bg-purple-950 text-purple-300 border border-purple-500/30"
+                  }`}>
+                    GEMINI
+                  </span>
+                </div>
+                <div className={`text-[10px] truncate ${activeTab === "ai_creator" ? "text-purple-100" : "text-slate-400 font-medium"}`}>
+                  Daily 5 Posts & 5s Reels
+                </div>
+              </div>
+            </button>
+
+            {/* Vertical Tab 4: WhatsApp Campaigns */}
+            <button
+              onClick={() => {
+                setActiveTab("sender");
+                setIsMobileSidebarOpen(false);
+              }}
+              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+                activeTab === "sender"
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-950/60 font-black border-l-4 border-emerald-300"
+                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+              }`}
+            >
+              <span className="text-lg">🚀</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold leading-tight flex items-center justify-between">
+                  <span>WhatsApp Campaigns</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                    activeTab === "sender" ? "bg-white/20 text-white" : "bg-emerald-950 text-emerald-300 border border-emerald-500/30"
+                  }`}>
+                    BROADCAST
+                  </span>
+                </div>
+                <div className={`text-[10px] truncate ${activeTab === "sender" ? "text-emerald-100" : "text-slate-400 font-medium"}`}>
+                  Meta API & SIM Farm
                 </div>
               </div>
             </button>
@@ -1481,14 +1603,14 @@ export default function MultiTenantWhatsAppSystem() {
                 }}
                 className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
                   activeTab === "admin"
-                    ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-950/60 font-bold border-l-4 border-amber-300"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/70"
+                    ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-950/60 font-black border-l-4 border-amber-300"
+                    : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
                 }`}
               >
                 <span className="text-lg">👑</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold leading-tight">Users & Credits</div>
-                  <div className={`text-[10px] truncate ${activeTab === "admin" ? "text-amber-100" : "text-slate-500"}`}>
+                  <div className={`text-[10px] truncate ${activeTab === "admin" ? "text-amber-100" : "text-slate-400 font-medium"}`}>
                     Client Wallets & Accounts
                   </div>
                 </div>
@@ -1498,29 +1620,29 @@ export default function MultiTenantWhatsAppSystem() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="pt-4 border-t border-slate-800 space-y-3">
+        <div className="pt-4 border-t border-slate-700 space-y-3">
           {/* Quick Engine Status */}
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5 text-[10px] text-slate-400 space-y-1">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-xl p-3 text-xs text-slate-200 space-y-1.5 shadow-md">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 SIM Farm
               </span>
-              <span className="font-mono text-emerald-400">{connectedSIMs.length} Active</span>
+              <span className="font-mono text-emerald-400 font-bold">{connectedSIMs.length} Active</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-200">
+                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
                 Meta Cloud API
               </span>
-              <span className="font-mono text-cyan-400">{metaConfig.hasToken ? "Ready" : "Not Set"}</span>
+              <span className="font-mono text-cyan-400 font-bold">{metaConfig.hasToken ? "Ready" : "Not Set"}</span>
             </div>
           </div>
 
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="w-full py-2.5 px-3 bg-slate-950 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 px-3 bg-slate-900 hover:bg-[#2a0e16] text-slate-200 hover:text-rose-200 border border-slate-700 hover:border-rose-700/60 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
           >
             <span>🚪</span>
             <span>Logout Account</span>
@@ -1533,12 +1655,12 @@ export default function MultiTenantWhatsAppSystem() {
           ========================================================================= */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Top Header inside Main Content */}
-        <header className="px-4 sm:px-8 py-4 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex items-center justify-between">
+        <header className="px-4 sm:px-8 py-4 bg-slate-950  border-b border-slate-700 sticky top-0 z-30 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Mobile Sidebar Hamburger Toggle */}
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white cursor-pointer"
+              className="lg:hidden p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white cursor-pointer"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -1547,15 +1669,22 @@ export default function MultiTenantWhatsAppSystem() {
 
             <div>
               <div className="text-[11px] text-slate-400 flex items-center gap-1.5 font-medium">
-                <span>Dashboard</span>
+                <span>Anant Reach</span>
                 <span>/</span>
-                <span className="text-emerald-400 capitalize">
-                  {activeTab === "sender" ? "WhatsApp Campaigns" : activeTab === "social" ? "Omni-Post Studio" : "User Management"}
+                <span className="text-amber-400 capitalize">
+                  {activeTab === "dashboard"
+                    ? "Analytics Dashboard"
+                    : activeTab === "social"
+                    ? "Post Studio"
+                    : activeTab === "sender"
+                    ? "WhatsApp Campaigns"
+                    : "User Management"}
                 </span>
               </div>
               <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                {activeTab === "dashboard" && "📊 Social Media Views & Performance Dashboard"}
+                {activeTab === "social" && "✍️ Post Studio: Multi-Channel Social Publisher"}
                 {activeTab === "sender" && "🚀 WhatsApp Bulk Campaign Dispatcher"}
-                {activeTab === "social" && "🌐 Single Post ➔ All Social Media Accounts"}
                 {activeTab === "admin" && "👑 Admin User & Credit Management"}
               </h1>
             </div>
@@ -1570,8 +1699,8 @@ export default function MultiTenantWhatsAppSystem() {
           META PRICING & BUY MESSAGES MODAL (AS PER META POLICY)
           ========================================================================= */}
       {showBuyMetaModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/90  z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -1591,7 +1720,7 @@ export default function MultiTenantWhatsAppSystem() {
             </div>
 
             {/* Meta Free Tier Info Banner */}
-            <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 mb-5 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-[#062419] border border-emerald-500/40 mb-5 flex items-center justify-between">
               <div>
                 <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                   <span>🎁</span> Meta Official Free Allowance:
@@ -1610,7 +1739,7 @@ export default function MultiTenantWhatsAppSystem() {
               {/* Pack 1 */}
               <div
                 onClick={() => handleBuyMetaPack(1000, 850)}
-                className="p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-emerald-500/60 hover:bg-slate-900/80 transition cursor-pointer flex items-center justify-between group"
+                className="p-4 rounded-2xl border border-slate-700 bg-slate-950 hover:border-emerald-500/60 hover:bg-slate-900 transition cursor-pointer flex items-center justify-between group"
               >
                 <div>
                   <div className="text-sm font-bold text-white group-hover:text-emerald-400 transition">
@@ -1631,7 +1760,7 @@ export default function MultiTenantWhatsAppSystem() {
               {/* Pack 2 (Popular) */}
               <div
                 onClick={() => handleBuyMetaPack(5000, 4000)}
-                className="p-4 rounded-2xl border-2 border-emerald-500/50 bg-emerald-950/20 hover:border-emerald-400 hover:bg-emerald-950/40 transition cursor-pointer flex items-center justify-between relative shadow-lg shadow-emerald-950/50"
+                className="p-4 rounded-2xl border-2 border-emerald-500/50 bg-[#062419] hover:border-emerald-400 hover:bg-[#062419] transition cursor-pointer flex items-center justify-between relative shadow-lg shadow-emerald-950/50"
               >
                 <div className="absolute -top-2.5 right-4 px-2 py-0.5 bg-emerald-500 text-black text-[9px] font-black uppercase rounded-full">
                   Popular
@@ -1655,7 +1784,7 @@ export default function MultiTenantWhatsAppSystem() {
               {/* Pack 3 */}
               <div
                 onClick={() => handleBuyMetaPack(10000, 7500)}
-                className="p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-cyan-500/60 hover:bg-slate-900/80 transition cursor-pointer flex items-center justify-between group"
+                className="p-4 rounded-2xl border border-slate-700 bg-slate-950 hover:border-cyan-500/60 hover:bg-slate-900 transition cursor-pointer flex items-center justify-between group"
               >
                 <div>
                   <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition">
@@ -1675,7 +1804,7 @@ export default function MultiTenantWhatsAppSystem() {
             </div>
 
             <div className="text-center">
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-300">
                 100% Compliant with Meta WhatsApp Cloud Platform Terms • 0% Ban Risk
               </span>
             </div>
@@ -1687,8 +1816,8 @@ export default function MultiTenantWhatsAppSystem() {
           META CLOUD API CONFIGURATION MODAL (For Uploading Meta API Key)
           ========================================================================= */}
       {showMetaConfigModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/90  z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span className="text-lg">🌐</span>
@@ -1701,7 +1830,7 @@ export default function MultiTenantWhatsAppSystem() {
                 ✕
               </button>
             </div>
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 mb-4 text-xs text-slate-300">
+            <div className="bg-slate-950 border border-slate-700 rounded-2xl p-3 mb-4 text-xs text-slate-300">
               <div className="font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
                 <span>📋</span> Meta Developer Portal se Key Kaise Lein:
               </div>
@@ -1723,7 +1852,7 @@ export default function MultiTenantWhatsAppSystem() {
                   placeholder={metaConfig.hasToken ? `Current: ${metaConfig.maskedToken}` : "Paste your Meta Access Token here"}
                   value={inputMetaToken}
                   onChange={(e) => setInputMetaToken(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
                 ></textarea>
               </div>
 
@@ -1737,7 +1866,7 @@ export default function MultiTenantWhatsAppSystem() {
                   value={inputMetaPhoneId}
                   onChange={(e) => setInputMetaPhoneId(e.target.value)}
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -1750,7 +1879,7 @@ export default function MultiTenantWhatsAppSystem() {
                   placeholder="e.g. 293847162534"
                   value={inputMetaWabaId}
                   onChange={(e) => setInputMetaWabaId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -1761,7 +1890,7 @@ export default function MultiTenantWhatsAppSystem() {
                 <select
                   value={inputMetaTierLimit}
                   onChange={(e) => setInputMetaTierLimit(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                 >
                   <option value={250}>Tier 1: 250 conversations / 24 hours (Unverified / Starter)</option>
                   <option value={1000}>Tier 2: 1,000 conversations / 24 hours (Standard Verified)</option>
@@ -1792,8 +1921,8 @@ export default function MultiTenantWhatsAppSystem() {
 
       {/* Credit Recharge Modal (Admin Only) */}
       {rechargeTargetUser && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/90  z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-base font-bold text-white mb-1">
               Recharge Credits for {rechargeTargetUser.name}
             </h3>
@@ -1802,7 +1931,7 @@ export default function MultiTenantWhatsAppSystem() {
             </p>
 
             <div className="space-y-2 mb-4">
-              <label className="p-3 rounded-xl border border-emerald-500/50 bg-emerald-950/20 flex items-center justify-between cursor-pointer">
+              <label className="p-3 rounded-xl border border-emerald-500/50 bg-[#062419] flex items-center justify-between cursor-pointer">
                 <div>
                   <div className="text-sm font-bold text-white">50,000 Credits Pack</div>
                   <div className="text-xs text-emerald-400">₹5,000 Package (10 Paise / msg)</div>
@@ -1814,7 +1943,7 @@ export default function MultiTenantWhatsAppSystem() {
                 />
               </label>
 
-              <label className="p-3 rounded-xl border border-slate-800 bg-slate-950 flex items-center justify-between cursor-pointer">
+              <label className="p-3 rounded-xl border border-slate-700 bg-slate-950 flex items-center justify-between cursor-pointer">
                 <div>
                   <div className="text-sm font-bold text-white">1,00,000 Credits Pack</div>
                   <div className="text-xs text-cyan-400">₹9,000 Package</div>
@@ -1847,14 +1976,14 @@ export default function MultiTenantWhatsAppSystem() {
 
       {/* DUAL LINK SIM MODAL */}
       {showAddSimModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/90  z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-base font-bold text-white">Link New SIM to Private Server</h3>
               <span className="text-[11px] text-emerald-400 font-mono">100% Free Forever</span>
             </div>
 
-            <div className="flex bg-slate-950 p-1 rounded-xl mb-4 border border-slate-800">
+            <div className="flex bg-slate-950 p-1 rounded-xl mb-4 border border-slate-700">
               <button
                 onClick={() => {
                   setLinkMethod("pairing");
@@ -1888,7 +2017,7 @@ export default function MultiTenantWhatsAppSystem() {
                     <p className="text-xs text-slate-300 mb-2">
                       WhatsApp ➡️ <strong>Linked Devices</strong> ➡️ <strong>Link with phone number instead</strong> me yeh code daalein:
                     </p>
-                    <div className="my-4 py-3 px-4 bg-emerald-950/60 border-2 border-dashed border-emerald-500 rounded-xl inline-block">
+                    <div className="my-4 py-3 px-4 bg-[#062419] border-2 border-dashed border-emerald-500 rounded-xl inline-block">
                       <span className="text-3xl font-black font-mono tracking-widest text-emerald-300">
                         {activePairingCode}
                       </span>
@@ -1909,7 +2038,7 @@ export default function MultiTenantWhatsAppSystem() {
                         value={newSimPhone}
                         onChange={(e) => setNewSimPhone(e.target.value)}
                         required
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                     <div>
@@ -1921,7 +2050,7 @@ export default function MultiTenantWhatsAppSystem() {
                         placeholder="e.g. Jio SIM 2"
                         value={newSimLabel}
                         onChange={(e) => setNewSimLabel(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                     <button
@@ -1956,7 +2085,7 @@ export default function MultiTenantWhatsAppSystem() {
                       placeholder="SIM Label (e.g. SIM 1)"
                       value={newSimLabel}
                       onChange={(e) => setNewSimLabel(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                     <button
                       type="submit"
@@ -1987,8 +2116,8 @@ export default function MultiTenantWhatsAppSystem() {
 
       {/* SAVE TEMPLATE MODAL */}
       {showSaveTemplateModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/90  z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span>💾</span>
@@ -2017,7 +2146,7 @@ export default function MultiTenantWhatsAppSystem() {
                   placeholder="e.g. Outstanding & Aging Notice"
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -2025,7 +2154,7 @@ export default function MultiTenantWhatsAppSystem() {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Template Message Preview
                 </label>
-                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 font-sans max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                <div className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-300 font-sans max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed">
                   {messageText || "(Message box is empty)"}
                 </div>
               </div>
@@ -2068,8 +2197,8 @@ export default function MultiTenantWhatsAppSystem() {
 
       {/* MOBILE APP INSTALL GUIDE MODAL */}
       {showInstallGuideModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/90  z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span className="text-lg">📲</span>
@@ -2089,7 +2218,7 @@ export default function MultiTenantWhatsAppSystem() {
 
             <div className="space-y-3">
               {/* Android Chrome */}
-              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
+              <div className="p-3.5 bg-slate-950 border border-slate-700 rounded-2xl">
                 <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mb-1">
                   <span>🤖</span> Android (Google Chrome):
                 </div>
@@ -2101,7 +2230,7 @@ export default function MultiTenantWhatsAppSystem() {
               </div>
 
               {/* iPhone iOS Safari */}
-              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
+              <div className="p-3.5 bg-slate-950 border border-slate-700 rounded-2xl">
                 <div className="text-xs font-bold text-cyan-400 flex items-center gap-1.5 mb-1">
                   <span>🍎</span> iPhone / iPad (Apple Safari):
                 </div>
@@ -2125,7 +2254,7 @@ export default function MultiTenantWhatsAppSystem() {
 
       {/* 5-SECOND FLOATING PWA INSTALL POPUP (Only once upon browser login) */}
       {showPwaPopup && currentUser && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100%-3rem)] sm:w-96 bg-slate-900/95 border border-emerald-500/50 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-fadeIn flex flex-col gap-3">
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100%-3rem)] sm:w-96 bg-slate-900 border border-emerald-500/50 rounded-2xl p-4 shadow-2xl  animate-fadeIn flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0">
               📱
@@ -2180,13 +2309,13 @@ export default function MultiTenantWhatsAppSystem() {
       {currentUser.role === "admin" && activeTab === "admin" && (
         <main className="max-w-7xl mx-auto mt-6 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
               <div className="text-xs text-slate-400">Total Registered Clients</div>
               <div className="text-2xl font-black text-white mt-1">
                 {allUsers.filter((u) => u.role === "user").length}
               </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
               <div className="text-xs text-slate-400">Active User Credits</div>
               <div className="text-2xl font-black text-emerald-400 mt-1 font-mono">
                 {allUsers
@@ -2195,13 +2324,13 @@ export default function MultiTenantWhatsAppSystem() {
                   .toLocaleString()}
               </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
               <div className="text-xs text-slate-400">Meta Free Allowance</div>
               <div className="text-2xl font-black text-cyan-400 mt-1 font-mono">
                 {freeTierRemaining} Free
               </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
               <div className="text-xs text-slate-400">Meta 24h Tier Limit</div>
               <div className="text-lg font-bold text-amber-400 mt-1 font-mono">
                 {metaConfig.currentTierLimit} msgs/24h
@@ -2211,7 +2340,7 @@ export default function MultiTenantWhatsAppSystem() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Form: Create User */}
-            <div className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <div className="lg:col-span-4 bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-xl">
               <h2 className="text-base font-bold text-white mb-2 flex items-center gap-2">
                 <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -2233,7 +2362,7 @@ export default function MultiTenantWhatsAppSystem() {
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
@@ -2247,7 +2376,7 @@ export default function MultiTenantWhatsAppSystem() {
                     value={newUserUsername}
                     onChange={(e) => setNewUserUsername(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-cyan-400 font-mono focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-400 font-mono focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
@@ -2261,7 +2390,7 @@ export default function MultiTenantWhatsAppSystem() {
                     value={newUserPassword}
                     onChange={(e) => setNewUserPassword(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
@@ -2274,7 +2403,7 @@ export default function MultiTenantWhatsAppSystem() {
                     value={newUserCredits}
                     onChange={(e) => setNewUserCredits(Number(e.target.value))}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
@@ -2289,7 +2418,7 @@ export default function MultiTenantWhatsAppSystem() {
             </div>
 
             {/* Table: Client Accounts & Credits */}
-            <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
+            <div className="lg:col-span-8 bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-bold text-white">Registered Clients & Credits Balance</h3>
                 <span className="text-xs text-slate-400">Total: {allUsers.length} accounts</span>
@@ -2297,7 +2426,7 @@ export default function MultiTenantWhatsAppSystem() {
 
               <div className="overflow-x-auto flex-1">
                 <table className="w-full text-left text-xs">
-                  <thead className="text-[11px] text-slate-400 uppercase bg-slate-950/60 border-b border-slate-800">
+                  <thead className="text-[11px] text-slate-400 uppercase bg-slate-950 border-b border-slate-700">
                     <tr>
                       <th className="py-2.5 px-3">Client Name</th>
                       <th className="py-2.5 px-3">Username</th>
@@ -2345,7 +2474,7 @@ export default function MultiTenantWhatsAppSystem() {
                             {u.role !== "admin" && (
                               <button
                                 onClick={() => handleDeleteUser(u.id, u.name)}
-                                className="p-1 text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                                className="p-1 text-slate-300 hover:text-rose-400 transition cursor-pointer"
                                 title="Delete user"
                               >
                                 ✕
@@ -2370,32 +2499,32 @@ export default function MultiTenantWhatsAppSystem() {
         <main className="max-w-7xl mx-auto mt-6 space-y-6">
           
           {/* DUAL ENGINE SWITCHER & META POLICY DASHBOARD */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="bg-slate-900 border border-slate-700/90 rounded-3xl p-5 sm:p-6 shadow-2xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-700">
               <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
                   <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   Select Sending Engine
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-200 mt-1 font-medium">
                   Meta Official API (1,000 Free, Zero Ban) ya Private SIM Farm choose karein
                 </p>
               </div>
 
               {/* Mode Toggle Buttons */}
-              <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+              <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-700 shadow-md">
                 <button
                   onClick={() => setEngineMode("meta")}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                     engineMode === "meta"
                       ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
-                      : "text-slate-400 hover:text-white"
+                      : "text-slate-300 hover:text-white"
                   }`}
                 >
                   <span>🌐 Official Meta Cloud API</span>
-                  <span className="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded-md border border-emerald-500/40 font-mono">
+                  <span className="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded-md border border-emerald-500/40 font-mono font-bold">
                     1000 Free/Mo
                   </span>
                 </button>
@@ -2404,11 +2533,11 @@ export default function MultiTenantWhatsAppSystem() {
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                     engineMode === "sim"
                       ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg"
-                      : "text-slate-400 hover:text-white"
+                      : "text-slate-300 hover:text-white"
                   }`}
                 >
                   <span>📱 Private SIM Farm</span>
-                  <span className="text-[10px] bg-cyan-950 text-cyan-300 px-1.5 py-0.5 rounded-md border border-cyan-500/40 font-mono">
+                  <span className="text-[10px] bg-cyan-950 text-cyan-300 px-1.5 py-0.5 rounded-md border border-cyan-500/40 font-mono font-bold">
                     {connectedSIMs.length} SIMs
                   </span>
                 </button>
@@ -2418,28 +2547,28 @@ export default function MultiTenantWhatsAppSystem() {
             {/* ENGINE INFO BAR */}
             {engineMode === "meta" ? (
               <div className="pt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <div className="text-[11px] text-slate-400">🎁 Meta Free Allowance:</div>
-                  <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
-                    {freeTierRemaining} / 1,000 <span className="text-xs font-normal text-slate-400">Free/Mo</span>
+                <div className="bg-slate-950 border border-slate-700/90 rounded-xl p-3.5 shadow-md">
+                  <div className="text-xs font-bold text-slate-200">🎁 Meta Free Allowance:</div>
+                  <div className="text-base font-black text-emerald-400 font-mono mt-0.5">
+                    {freeTierRemaining} / 1,000 <span className="text-xs font-semibold text-slate-300">Free/Mo</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Service (Incoming) Msgs</div>
+                  <div className="text-[11px] text-slate-300 font-medium mt-0.5">Service (Incoming) Msgs</div>
                 </div>
 
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <div className="text-[11px] text-slate-400">📊 Meta 24h Tier Limit:</div>
-                  <div className="text-base font-bold text-amber-400 font-mono mt-0.5">
+                <div className="bg-slate-950 border border-slate-700/90 rounded-xl p-3.5 shadow-md">
+                  <div className="text-xs font-bold text-slate-200">📊 Meta 24h Tier Limit:</div>
+                  <div className="text-base font-black text-amber-300 font-mono mt-0.5">
                     {metaConfig.currentTierLimit} Customers / 24h
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Official Tier Limit</div>
+                  <div className="text-[11px] text-slate-300 font-medium mt-0.5">Official Tier Limit</div>
                 </div>
 
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <div className="text-[11px] text-slate-400">🛡️ Meta Ban Risk:</div>
-                  <div className="text-base font-bold text-emerald-300 font-mono mt-0.5">
+                <div className="bg-slate-950 border border-slate-700/90 rounded-xl p-3.5 shadow-md">
+                  <div className="text-xs font-bold text-slate-200">🛡️ Meta Ban Risk:</div>
+                  <div className="text-base font-black text-emerald-300 font-mono mt-0.5">
                     0.0% (Meta Approved)
                   </div>
-                  <div className="text-[10px] text-emerald-500/80 mt-0.5 font-medium">
+                  <div className="text-[11px] text-emerald-400 font-bold mt-0.5">
                     {metaConfig.hasToken ? "✅ Meta API Key Active" : "⚠️ API Key Needed"}
                   </div>
                 </div>
@@ -2447,13 +2576,13 @@ export default function MultiTenantWhatsAppSystem() {
                 <div className="flex flex-col gap-2 justify-center">
                   <button
                     onClick={() => setShowMetaConfigModal(true)}
-                    className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                   >
                     <span>⚙️ {metaConfig.hasToken ? "Update Meta API Key" : "Upload Meta API Key"}</span>
                   </button>
                   <button
                     onClick={() => setShowBuyMetaModal(true)}
-                    className="w-full py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                    className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                   >
                     <span>💳 Buy Meta Messages</span>
                   </button>
@@ -2462,23 +2591,23 @@ export default function MultiTenantWhatsAppSystem() {
             ) : (
               <>
                 <div className="pt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                    <div className="text-[11px] text-slate-400">📱 Connected SIMs:</div>
-                    <div className="text-base font-bold text-cyan-400 font-mono mt-0.5">
+                  <div className="bg-slate-950 border border-slate-700/90 rounded-xl p-3.5 shadow-md">
+                    <div className="text-xs font-bold text-slate-200">📱 Connected SIMs:</div>
+                    <div className="text-base font-black text-cyan-400 font-mono mt-0.5">
                       {connectedSIMs.length} Active in Rotation
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                    <div className="text-[11px] text-slate-400">⚡ Engine Cost:</div>
-                    <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
+                  <div className="bg-slate-950 border border-slate-700/90 rounded-xl p-3.5 shadow-md">
+                    <div className="text-xs font-bold text-slate-200">⚡ Engine Cost:</div>
+                    <div className="text-base font-black text-emerald-400 font-mono mt-0.5">
                       100% Free Forever
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                    <div className="text-[11px] text-slate-400">Safe Capacity:</div>
-                    <div className="text-base font-bold text-white font-mono mt-0.5">
+                  <div className="bg-slate-950 border border-slate-700/90 rounded-xl p-3.5 shadow-md">
+                    <div className="text-xs font-bold text-slate-200">Safe Capacity:</div>
+                    <div className="text-base font-black text-white font-mono mt-0.5">
                       ~{connectedSIMs.length * 200} msgs/day
                     </div>
                   </div>
@@ -2491,7 +2620,7 @@ export default function MultiTenantWhatsAppSystem() {
                         setActivePairingCode(null);
                         setNewSimLabel(`SIM ${userVisibleSessions.length + 1}`);
                       }}
-                      className="w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      className="w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                     >
                       <span>+ Link SIM (OTP/QR)</span>
                     </button>
@@ -2499,16 +2628,16 @@ export default function MultiTenantWhatsAppSystem() {
                 </div>
 
                 {/* Active SIMs List (Filtered by User) */}
-                <div className="mt-4 pt-3 border-t border-slate-800/80">
+                <div className="mt-4 pt-3 border-t border-slate-700">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-bold text-slate-300">Live SIM Devices:</span>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-xs font-black text-slate-200">Live SIM Devices:</span>
+                    <span className="text-xs text-slate-400 font-semibold">
                       ({connectedSIMs.length} connected)
                     </span>
                   </div>
 
                   {userVisibleSessions.length === 0 ? (
-                    <div className="p-3 bg-slate-950/60 border border-dashed border-slate-800 rounded-xl text-center text-xs text-slate-500">
+                    <div className="p-3.5 bg-slate-950 border border-dashed border-slate-700 rounded-xl text-center text-xs text-slate-300 font-medium">
                       Aapke account par koi SIM connected nahi hai. "+ Link SIM (OTP/QR)" par click karke apna WhatsApp number jodein.
                     </div>
                   ) : (
@@ -2516,15 +2645,15 @@ export default function MultiTenantWhatsAppSystem() {
                       {userVisibleSessions.map((sim) => (
                         <div
                           key={sim.id}
-                          className={`p-3 rounded-xl border flex items-center justify-between ${
+                          className={`p-3.5 rounded-xl border flex items-center justify-between shadow-md ${
                             sim.status === "CONNECTED"
-                              ? "bg-emerald-950/20 border-emerald-800/50"
-                              : "bg-slate-950 border-slate-800"
+                              ? "bg-[#062419] border-emerald-700/60"
+                              : "bg-slate-950 border-slate-700"
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                              sim.status === "CONNECTED" ? "bg-emerald-600/30 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-400"
+                              sim.status === "CONNECTED" ? "bg-emerald-600/40 text-emerald-300 border border-emerald-500/40" : "bg-slate-800 text-slate-300"
                             }`}>
                               📱
                             </div>
@@ -2533,12 +2662,12 @@ export default function MultiTenantWhatsAppSystem() {
                                 <span>{sim.label}</span>
                                 <span className={`w-1.5 h-1.5 rounded-full ${sim.status === "CONNECTED" ? "bg-emerald-400" : "bg-amber-400"}`}></span>
                                 {currentUser?.role === "admin" && sim.owner && (
-                                  <span className="text-[9px] bg-slate-800 text-cyan-300 px-1 rounded font-mono">
+                                  <span className="text-[9px] bg-slate-800 text-cyan-300 px-1 rounded font-mono font-bold">
                                     @{sim.owner}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-cyan-400 font-mono truncate">
+                              <div className="text-xs text-cyan-300 font-mono font-bold truncate">
                                 {sim.userPhone ? `+${sim.userPhone}` : sim.status}
                               </div>
                             </div>
@@ -2546,7 +2675,7 @@ export default function MultiTenantWhatsAppSystem() {
                           <button
                             onClick={() => handleDeleteSession(sim.id)}
                             title="Disconnect SIM"
-                            className="px-2 py-1 bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800/50 text-rose-300 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                            className="px-2.5 py-1 bg-[#2a0e16] hover:bg-rose-900 border border-rose-700 text-rose-200 rounded-lg text-[11px] font-bold transition cursor-pointer"
                           >
                             Disconnect
                           </button>
@@ -2563,10 +2692,10 @@ export default function MultiTenantWhatsAppSystem() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Column: Target Contacts */}
             <section className="lg:col-span-5 flex flex-col gap-6">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl">
+              <div className="bg-slate-900 border border-slate-700/90 rounded-3xl p-5 sm:p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xs font-bold">
+                  <h2 className="text-base font-black text-white flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-cyan-600/40 text-cyan-300 border border-cyan-500/50 flex items-center justify-center text-xs font-bold">
                       2
                     </span>
                     Target Contacts ({recipients.length})
@@ -2581,53 +2710,53 @@ export default function MultiTenantWhatsAppSystem() {
                         setFileName("");
                         setDetectedVariables([]);
                       }}
-                      className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                      className="text-xs text-rose-400 hover:text-rose-300 underline font-bold cursor-pointer"
                     >
                       Clear All
                     </button>
                   )}
                 </div>
 
-                <p className="text-[11px] text-slate-400 mb-2">
+                <p className="text-xs text-slate-200 font-medium mb-2.5 leading-relaxed">
                   📱 Mobile Numbers Box (Only 10 Digits | Auto-shift at 10 | Duplicates & &lt;10 auto-removed):
                 </p>
 
                 <textarea
                   rows={4}
-                  placeholder={"8875216646\n9057588165\n(Type or paste mobile numbers here)"}
+                  placeholder={"8875216646\n9057588165\n(Type or paste 10-digit mobile numbers here)"}
                   value={directPasteInput}
                   onChange={handleNumberInputChange}
                   onPaste={handleNumberPaste}
                   onBlur={handleNumberInputBlur}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-emerald-400 focus:outline-none focus:border-cyan-500 font-mono leading-relaxed resize-y placeholder:text-slate-600"
+                  className="w-full bg-slate-950 border-2 border-slate-700 focus:border-cyan-400 rounded-xl p-3.5 text-xs text-emerald-300 focus:outline-none font-mono leading-relaxed resize-y placeholder:text-slate-400 focus:ring-1 focus:ring-cyan-400 shadow-inner"
                 ></textarea>
 
                 {numbersFeedback && (
-                  <div className="mt-2 p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-cyan-300 font-mono">
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-cyan-300 font-mono font-semibold">
                     {numbersFeedback}
                   </div>
                 )}
 
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2.5 mt-3">
                   <button
                     type="button"
                     onClick={handleNumberInputBlur}
-                    className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-xl transition cursor-pointer shadow-md"
+                    className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold py-2.5 rounded-xl transition cursor-pointer shadow-md"
                   >
                     ⚡ Auto-Format & Clean
                   </button>
                   <button
                     type="button"
                     onClick={handleDownloadSampleExcel}
-                    className="px-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+                    className="px-3.5 bg-slate-800 hover:bg-slate-700 text-cyan-200 border border-slate-600 text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
                   >
                     📥 Sample .xlsx
                   </button>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-slate-800">
-                  <label className="w-full flex items-center justify-center p-2.5 border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl cursor-pointer bg-slate-950/60 transition group">
-                    <span className="text-xs text-slate-300 group-hover:text-cyan-400 font-medium">
+                <div className="mt-4 pt-3.5 border-t border-slate-700">
+                  <label className="w-full flex items-center justify-center p-3 border-2 border-dashed border-slate-600 hover:border-cyan-400 rounded-xl cursor-pointer bg-slate-950 transition group">
+                    <span className="text-xs text-slate-200 group-hover:text-cyan-300 font-bold">
                       {fileName ? `File: ${fileName}` : "📊 Or Upload .xlsx Sheet"}
                     </span>
                     <input
@@ -2644,10 +2773,10 @@ export default function MultiTenantWhatsAppSystem() {
             {/* Right Column: Message, Attachments & Dispatch */}
             <section className="lg:col-span-7 flex flex-col gap-6">
               {/* Message Box */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl">
+              <div className="bg-slate-900 border border-slate-700/90 rounded-3xl p-5 sm:p-6 shadow-2xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs font-bold">
+                  <h2 className="text-base font-black text-white flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-emerald-600/40 text-emerald-300 border border-emerald-500/50 flex items-center justify-center text-xs font-bold">
                       3
                     </span>
                     Message Content & Dynamic Templates
@@ -2658,7 +2787,7 @@ export default function MultiTenantWhatsAppSystem() {
                     <select
                       value={selectedTemplateId}
                       onChange={(e) => handleSelectTemplate(e.target.value)}
-                      className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 font-medium"
+                      className="bg-slate-950 border border-slate-600 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 font-semibold"
                     >
                       <option value="">-- Saved Templates --</option>
                       {savedTemplates.map((tpl) => (
@@ -2672,7 +2801,7 @@ export default function MultiTenantWhatsAppSystem() {
                       type="button"
                       onClick={() => setShowSaveTemplateModal(true)}
                       title="Save current message as template"
-                      className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                      className="px-3 py-2 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                     >
                       <span>💾</span>
                       <span>Save</span>
@@ -2686,7 +2815,7 @@ export default function MultiTenantWhatsAppSystem() {
                           if (cur) handleDeleteTemplate(cur.id, cur.name);
                         }}
                         title="Delete selected template"
-                        className="px-2 py-1.5 bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                        className="px-2.5 py-2 bg-[#2a0e16] hover:bg-rose-900 border border-rose-700 text-rose-200 rounded-xl text-xs font-bold transition cursor-pointer"
                       >
                         ✕
                       </button>
@@ -2695,9 +2824,9 @@ export default function MultiTenantWhatsAppSystem() {
                 </div>
 
                 {/* Variable Tags Bar (Excel Column Headers) */}
-                <div className="mb-2.5 p-2.5 bg-slate-950/70 border border-slate-800 rounded-2xl">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                <div className="mb-3 p-3 bg-slate-950 border border-slate-700/80 rounded-2xl shadow-inner">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                       <span className="text-emerald-400">🏷️</span>
                       <span>
                         {detectedVariables.length > 0
@@ -2717,25 +2846,25 @@ export default function MultiTenantWhatsAppSystem() {
                           handleInsertVariable(clean);
                         }
                       }}
-                      className="text-[10px] text-cyan-400 hover:text-cyan-300 underline font-semibold cursor-pointer"
+                      className="text-xs text-cyan-300 hover:text-cyan-200 underline font-bold cursor-pointer"
                     >
                       + Custom Tag
                     </button>
                   </div>
 
                   {detectedVariables.length === 0 ? (
-                    <div className="text-[11px] text-slate-500 py-1 flex items-center gap-1.5">
+                    <div className="text-xs text-amber-200 bg-[#261708] border border-amber-800/60 p-2.5 rounded-xl font-medium flex items-center gap-2">
                       <span>ℹ️</span>
                       <span>Excel sheet upload karein — uske saare column headers automatic yahan buttons ban kar dikhenge.</span>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       {detectedVariables.map((v) => (
                         <button
                           key={v}
                           type="button"
                           onClick={() => handleInsertVariable(v)}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-emerald-950 border border-slate-700 hover:border-emerald-500/50 text-emerald-300 rounded-lg text-xs font-mono transition cursor-pointer shadow-sm"
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-emerald-950 border border-slate-600 hover:border-emerald-400 text-emerald-300 font-bold rounded-lg text-xs font-mono transition cursor-pointer shadow-sm"
                           title={`Click to insert {${v}} in message`}
                         >
                           + {`{${v}}`}
@@ -2750,22 +2879,22 @@ export default function MultiTenantWhatsAppSystem() {
                     rows={4}
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Dear {name}, your outstating is {os pending} from {due date} ageing is {aging} thanks you"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 leading-relaxed font-sans"
+                    placeholder="Dear {name}, your outstanding is {os pending} from {due date}. Ageing is {aging}. Thank you!"
+                    className="w-full bg-slate-950 border-2 border-slate-700 focus:border-emerald-400 rounded-xl p-3.5 text-sm text-white focus:outline-none leading-relaxed font-sans placeholder:text-slate-400 focus:ring-1 focus:ring-emerald-400 shadow-inner"
                   ></textarea>
-                  <span className="absolute bottom-2.5 right-3 text-[10px] text-slate-500 font-mono">
+                  <span className="absolute bottom-3 right-3 text-xs text-slate-300 font-mono font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-700">
                     {messageText.length} chars
                   </span>
                 </div>
 
                 {/* Live Message Preview (showing how actual message will look for 1st recipient) */}
                 {recipients.length > 0 && (
-                  <div className="mt-2.5 p-2.5 bg-emerald-950/20 border border-emerald-900/40 rounded-xl">
-                    <div className="text-[10px] font-bold text-emerald-400 mb-1 flex items-center justify-between">
+                  <div className="mt-3 p-3 bg-[#062419] border border-emerald-700/60 rounded-xl shadow-md">
+                    <div className="text-xs font-black text-emerald-300 mb-1.5 flex items-center justify-between">
                       <span>👁️ Live Preview for First Contact ({recipients[0].phone}):</span>
-                      <span className="text-slate-400 font-normal text-[10px]">Excel columns auto-substituted</span>
+                      <span className="text-slate-300 font-semibold text-[11px]">Excel columns auto-substituted</span>
                     </div>
-                    <div className="text-xs text-slate-200 whitespace-pre-wrap font-sans bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80 leading-relaxed">
+                    <div className="text-xs text-white whitespace-pre-wrap font-sans bg-slate-950 p-3 rounded-lg border border-slate-700 leading-relaxed font-medium">
                       {(() => {
                         let preview = messageText;
                         const row = recipients[0].customData || {};
@@ -2791,9 +2920,9 @@ export default function MultiTenantWhatsAppSystem() {
               </div>
 
               {/* Media Attachment (1 of 3) */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl">
+              <div className="bg-slate-900 border border-slate-700/90 rounded-3xl p-5 sm:p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-1">
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <h2 className="text-base font-black text-white flex items-center gap-2">
                     <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                     </svg>
@@ -2803,33 +2932,33 @@ export default function MultiTenantWhatsAppSystem() {
                     <button
                       type="button"
                       onClick={() => setAttachment(null)}
-                      className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                      className="text-xs text-rose-400 hover:text-rose-300 underline font-bold cursor-pointer"
                     >
                       Remove Attachment
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 mb-3">
+                <p className="text-xs text-slate-200 mb-3.5 font-medium">
                   Image (2 MB) | Video (10 MB) | PDF (3 MB)
                 </p>
 
                 {uploadError && (
-                  <div className="mb-3 p-2.5 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
+                  <div className="mb-3 p-2.5 rounded-lg bg-[#2a0e16] border border-rose-800 text-rose-300 text-xs font-semibold">
                     {uploadError}
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <label
-                    className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition ${
+                    className={`p-3.5 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition shadow-md ${
                       attachment?.type === "image"
-                        ? "bg-pink-500/10 border-pink-500 text-pink-300"
-                        : "bg-slate-950 border-slate-800 hover:border-pink-500/50 text-slate-300"
+                        ? "bg-pink-500/20 border-pink-500 text-pink-200"
+                        : "bg-slate-950 border-slate-700 hover:border-pink-500/50 text-slate-200"
                     }`}
                   >
-                    <span className="text-xl mb-1">🖼️</span>
-                    <span className="text-xs font-bold">Image</span>
-                    <span className="text-[10px] text-pink-400 mt-0.5">Max 2 MB</span>
+                    <span className="text-2xl mb-1">🖼️</span>
+                    <span className="text-xs font-black">Image</span>
+                    <span className="text-[10px] text-pink-300 font-bold mt-0.5">Max 2 MB</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -2839,15 +2968,15 @@ export default function MultiTenantWhatsAppSystem() {
                   </label>
 
                   <label
-                    className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition ${
+                    className={`p-3.5 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition shadow-md ${
                       attachment?.type === "video"
-                        ? "bg-purple-500/10 border-purple-500 text-purple-300"
-                        : "bg-slate-950 border-slate-800 hover:border-purple-500/50 text-slate-300"
+                        ? "bg-purple-500/20 border-purple-500 text-purple-200"
+                        : "bg-slate-950 border-slate-700 hover:border-purple-500/50 text-slate-200"
                     }`}
                   >
-                    <span className="text-xl mb-1">🎥</span>
-                    <span className="text-xs font-bold">Video</span>
-                    <span className="text-[10px] text-purple-400 mt-0.5">Max 10 MB</span>
+                    <span className="text-2xl mb-1">🎥</span>
+                    <span className="text-xs font-black">Video</span>
+                    <span className="text-[10px] text-purple-300 font-bold mt-0.5">Max 10 MB</span>
                     <input
                       type="file"
                       accept="video/*"
@@ -2857,15 +2986,15 @@ export default function MultiTenantWhatsAppSystem() {
                   </label>
 
                   <label
-                    className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition ${
+                    className={`p-3.5 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition shadow-md ${
                       attachment?.type === "pdf"
-                        ? "bg-amber-500/10 border-amber-500 text-amber-300"
-                        : "bg-slate-950 border-slate-800 hover:border-amber-500/50 text-slate-300"
+                        ? "bg-amber-500/20 border-amber-500 text-amber-200"
+                        : "bg-slate-950 border-slate-700 hover:border-amber-500/50 text-slate-200"
                     }`}
                   >
-                    <span className="text-xl mb-1">📄</span>
-                    <span className="text-xs font-bold">PDF Document</span>
-                    <span className="text-[10px] text-amber-400 mt-0.5">Max 3 MB</span>
+                    <span className="text-2xl mb-1">📄</span>
+                    <span className="text-xs font-black">PDF Document</span>
+                    <span className="text-[10px] text-amber-300 font-bold mt-0.5">Max 3 MB</span>
                     <input
                       type="file"
                       accept="application/pdf"
@@ -2876,33 +3005,35 @@ export default function MultiTenantWhatsAppSystem() {
                 </div>
 
                 {attachment && (
-                  <div className="mt-3 p-2.5 bg-slate-950 rounded-xl border border-emerald-500/40 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{attachment.type === "image" ? "🖼️" : attachment.type === "video" ? "🎥" : "📄"}</span>
-                      <span className="text-xs font-semibold text-slate-200 truncate max-w-[200px]">{attachment.name}</span>
+                  <div className="mt-3.5 p-3 bg-slate-950 rounded-xl border border-emerald-500/50 flex items-center justify-between shadow-md">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-lg">{attachment.type === "image" ? "🖼️" : attachment.type === "video" ? "🎥" : "📄"}</span>
+                      <span className="text-xs font-bold text-white truncate max-w-[220px]">{attachment.name}</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">Ready</span>
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold">
+                      Ready to Send
+                    </span>
                   </div>
                 )}
               </div>
 
               {/* Table & Big Dispatch Button */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex-1 flex flex-col">
+              <div className="bg-slate-900 border border-slate-700/90 rounded-3xl p-5 sm:p-6 shadow-2xl flex-1 flex flex-col">
                 {/* SELECT SENDING WHATSAPP NUMBER (SPECIFIC SIM VS RANDOM ROTATION) */}
                 {engineMode === "sim" && (
-                  <div className="mb-4 bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-1.5">
+                  <div className="mb-4 bg-slate-950 border border-slate-700 rounded-2xl p-3.5 space-y-2 shadow-inner">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                         <span>📲</span> Select Sending WhatsApp SIM:
                       </label>
-                      <span className="text-[10px] text-cyan-400 font-mono">
+                      <span className="text-xs text-cyan-300 font-mono font-bold">
                         {connectedSIMs.length} SIM(s) Connected
                       </span>
                     </div>
                     <select
                       value={selectedDispatchSim}
                       onChange={(e) => setSelectedDispatchSim(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 font-mono"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 font-mono shadow-sm"
                     >
                       <option value="random">
                         🎲 Random / Auto Round-Robin ({connectedSIMs.length} SIMs Rotation - Safe & Anti-Ban)
@@ -2913,7 +3044,7 @@ export default function MultiTenantWhatsAppSystem() {
                         </option>
                       ))}
                     </select>
-                    <p className="text-[11px] text-slate-400 leading-normal">
+                    <p className="text-xs text-slate-300 leading-normal font-medium">
                       {selectedDispatchSim === "random"
                         ? "✨ Random Rotation: Har message alag SIM se round-robin rotation me jayega (WhatsApp Ban Protection)."
                         : `🎯 Specific SIM: Sabhi messages strictly chuni hui SIM (${connectedSIMs.find((s) => s.id === selectedDispatchSim)?.label || "selected"}) se bheje jayenge.`}
@@ -2923,42 +3054,42 @@ export default function MultiTenantWhatsAppSystem() {
 
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold text-white">Contacts Queue</h3>
-                  <span className="text-xs text-emerald-400 font-mono">
+                  <span className="text-xs text-emerald-400 font-mono font-bold">
                     Cost: {recipients.length} Credits
                   </span>
                 </div>
 
-                <div className="overflow-x-auto flex-1 max-h-[160px] overflow-y-auto mb-4">
+                <div className="overflow-x-auto flex-1 max-h-[160px] overflow-y-auto mb-4 border border-slate-700 rounded-xl">
                   <table className="w-full text-left text-xs">
-                    <thead className="text-[11px] text-slate-400 uppercase bg-slate-950/60 sticky top-0 border-b border-slate-800">
+                    <thead className="text-xs text-slate-200 font-black uppercase bg-slate-950 sticky top-0 border-b border-slate-700">
                       <tr>
-                        <th className="py-2 px-3">#</th>
-                        <th className="py-2 px-3">Name</th>
-                        <th className="py-2 px-3">Number</th>
-                        <th className="py-2 px-3">Status</th>
+                        <th className="py-2.5 px-3">#</th>
+                        <th className="py-2.5 px-3">Name</th>
+                        <th className="py-2.5 px-3">Number</th>
+                        <th className="py-2.5 px-3">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-800">
                       {recipients.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="py-4 text-center text-slate-500">
+                          <td colSpan={4} className="py-4 text-center text-slate-300 font-medium">
                             Koi contact nahi hai. Excel upload ya numbers paste karein.
                           </td>
                         </tr>
                       ) : (
                         recipients.map((r, idx) => (
-                          <tr key={r.id} className="hover:bg-slate-800/40 transition">
-                            <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
-                            <td className="py-2 px-3 text-slate-200">{r.name}</td>
-                            <td className="py-2 px-3 font-mono text-cyan-400">{r.phone}</td>
+                          <tr key={r.id} className="hover:bg-slate-800/60 transition">
+                            <td className="py-2 px-3 font-mono text-slate-400 font-bold">{idx + 1}</td>
+                            <td className="py-2 px-3 text-slate-100 font-semibold">{r.name}</td>
+                            <td className="py-2 px-3 font-mono text-cyan-300 font-bold">{r.phone}</td>
                             <td className="py-2 px-3">
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                                   r.status === "Sent"
-                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                                     : r.status === "Failed"
-                                    ? "bg-rose-500/20 text-rose-400"
-                                    : "bg-slate-800 text-slate-400"
+                                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                    : "bg-slate-800 text-slate-300"
                                 }`}
                               >
                                 {r.status === "Sent" ? `Sent (${r.messageId?.slice(0, 12)}...)` : r.status}
@@ -2975,10 +3106,10 @@ export default function MultiTenantWhatsAppSystem() {
                 <button
                   onClick={handleStartDispatch}
                   disabled={isSending || recipients.length === 0}
-                  className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xl ${
+                  className={`w-full py-4 px-6 rounded-2xl font-black text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-2xl ${
                     isSending
                       ? "bg-amber-600 text-white animate-pulse"
-                      : "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-emerald-950"
+                      : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-950/60"
                   }`}
                 >
                   {isSending ? (
@@ -2997,7 +3128,7 @@ export default function MultiTenantWhatsAppSystem() {
 
                 {/* Server Logs */}
                 {serverLogs.length > 0 && (
-                  <div className="mt-4 p-3 bg-slate-950 rounded-xl border border-slate-800/80 font-mono text-[11px] text-slate-300 max-h-[100px] overflow-y-auto space-y-1">
+                  <div className="mt-4 p-3 bg-slate-950 rounded-xl border border-slate-700 font-mono text-[11px] text-slate-300 max-h-[100px] overflow-y-auto space-y-1">
                     {serverLogs.map((log, i) => (
                       <div key={i} className="text-emerald-400">
                         {log}
@@ -3012,11 +3143,59 @@ export default function MultiTenantWhatsAppSystem() {
       )}
 
       {/* =========================================================================
-          SUB-VIEW C: OMNI-CHANNEL SOCIAL MEDIA AUTO-POSTER
+          SUB-VIEW A: EXECUTIVE ANALYTICS & VIEWS DASHBOARD
+          ========================================================================= */}
+      {activeTab === "dashboard" && (
+        <main className="max-w-7xl mx-auto mt-4">
+          <SocialAnalyticsDashboard
+            currentUserId={currentUser.id}
+            currentUserName={currentUser.name}
+            onNavigateToPostStudio={() => setActiveTab("social")}
+          />
+        </main>
+      )}
+
+      {/* =========================================================================
+          SUB-VIEW B: POST STUDIO (MULTI-CHANNEL PUBLISHER)
           ========================================================================= */}
       {activeTab === "social" && (
         <main className="max-w-7xl mx-auto mt-6">
-          <OmniChannelSocialPublisher currentUserName={currentUser.name} currentUserId={currentUser.id} />
+          <OmniChannelSocialPublisher
+            currentUserName={currentUser.name}
+            currentUserId={currentUser.id}
+            initialPostFormat="feed"
+            prefillData={prefillPostData}
+          />
+        </main>
+      )}
+
+      {/* =========================================================================
+          SUB-VIEW B.5: REEL STUDIO (INSTAGRAM & FACEBOOK REELS 9:16)
+          ========================================================================= */}
+      {activeTab === "reel" && (
+        <main className="max-w-7xl mx-auto mt-6">
+          <OmniChannelSocialPublisher
+            currentUserName={currentUser.name}
+            currentUserId={currentUser.id}
+            initialPostFormat="reel"
+            prefillData={prefillPostData}
+          />
+        </main>
+      )}
+
+      {/* =========================================================================
+          SUB-VIEW C: AI POST CREATOR (GEMINI DAILY 5 POSTS & 5s REELS)
+          ========================================================================= */}
+      {activeTab === "ai_creator" && (
+        <main className="max-w-7xl mx-auto mt-6">
+          <AIPostCreator
+            currentUserId={currentUser.id}
+            currentUserName={currentUser.name}
+            onNavigateToPostStudio={(data) => {
+              if (data) setPrefillPostData(data);
+              setActiveTab(data?.postFormat === "reel" ? "reel" : "social");
+            }}
+          />
         </main>
       )}
         </div>
