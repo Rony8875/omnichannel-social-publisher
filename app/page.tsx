@@ -319,10 +319,11 @@ export default function MultiTenantWhatsAppSystem() {
     }
   }, []);
 
-  // Fetch Meta Config
+  // Fetch Meta Config for Current User
   const fetchMetaConfig = async () => {
     try {
-      const res = await fetch("/api/meta/config");
+      const uId = currentUser?.id || "admin_1";
+      const res = await fetch(`/api/meta/config?userId=${encodeURIComponent(uId)}`);
       const data = await res.json();
       if (data.success && data.config) {
         setMetaConfig(data.config);
@@ -337,7 +338,7 @@ export default function MultiTenantWhatsAppSystem() {
 
   useEffect(() => {
     fetchMetaConfig();
-  }, []);
+  }, [currentUser]);
 
   // Fetch all users for Admin
   const fetchAllUsers = async () => {
@@ -425,14 +426,19 @@ export default function MultiTenantWhatsAppSystem() {
     return () => clearInterval(interval);
   }, [activeSessionId, engineUrl]);
 
-  // --- SAVE META CREDENTIALS ---
+  const [isVerifyingMetaConfig, setIsVerifyingMetaConfig] = useState(false);
+
+  // --- SAVE & VERIFY META CREDENTIALS WITH META GRAPH API ---
   const handleSaveMetaConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsVerifyingMetaConfig(true);
     try {
+      const uId = currentUser?.id || "admin_1";
       const res = await fetch("/api/meta/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: uId,
           accessToken: inputMetaToken.trim() || undefined,
           phoneNumberId: inputMetaPhoneId.trim(),
           wabaId: inputMetaWabaId.trim(),
@@ -441,7 +447,7 @@ export default function MultiTenantWhatsAppSystem() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("✅ Meta Cloud API Credentials Saved Successfully!");
+        alert(data.message || "✅ Meta Cloud API Credentials Verified & Saved to Supabase!");
         setShowMetaConfigModal(false);
         setInputMetaToken("");
         fetchMetaConfig();
@@ -450,6 +456,8 @@ export default function MultiTenantWhatsAppSystem() {
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
+    } finally {
+      setIsVerifyingMetaConfig(false);
     }
   };
 
@@ -1144,6 +1152,7 @@ export default function MultiTenantWhatsAppSystem() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            userId: currentUser?.id || "admin_1",
             recipients: recipients.map((r) => r.phone),
             message: messageText,
             messages: personalizedMessages,
@@ -1395,13 +1404,13 @@ export default function MultiTenantWhatsAppSystem() {
   const freeTierRemaining = Math.max(0, metaConfig.freeTierTotal - (metaConfig.freeTierUsed || 0));
 
   return (
-    <div className="min-h-screen bg-[#070a13] text-slate-100 font-sans flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#070a13] text-slate-100 font-sans flex flex-col lg:flex-row w-full max-w-full overflow-x-hidden">
 
       {/* Mobile Drawer Overlay */}
       {isMobileSidebarOpen && (
         <div
           onClick={() => setIsMobileSidebarOpen(false)}
-          className="fixed inset-0 bg-black/90  z-40 lg:hidden"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 lg:hidden"
         ></div>
       )}
 
@@ -1409,49 +1418,49 @@ export default function MultiTenantWhatsAppSystem() {
           LEFT VERTICAL NAVIGATION BAR (SIDEBAR)
           ========================================================================= */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-[#0b1020] border-r border-slate-700 p-5 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out relative ${
+        className={`fixed inset-y-0 left-0 z-50 h-screen w-72 bg-[#090d16]/95 backdrop-blur-xl border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out lg:sticky lg:top-0 ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <div className="space-y-5">
           {/* Brand Header */}
-          <div className="relative pb-3 border-b border-slate-700">
+          <div className="relative pb-4 border-b border-slate-800/80">
             <AnantReachLogo size="md" showSubtitle={true} />
             {/* Close button on mobile */}
             <button
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="lg:hidden absolute top-2 right-2 text-slate-300 hover:text-white p-1 text-sm cursor-pointer bg-slate-800 rounded-lg"
+              className="lg:hidden absolute top-2 right-2 text-slate-400 hover:text-white p-1 text-sm cursor-pointer bg-slate-800/80 hover:bg-slate-700 rounded-lg transition"
             >
               ✕
             </button>
           </div>
 
           {/* User Profile Card */}
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-3 flex items-center gap-3 shadow-md">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-black text-white text-xs shadow-md shrink-0">
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3 shadow-md backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 flex items-center justify-center font-black text-slate-950 text-xs shadow-md shrink-0">
               {currentUser.name.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-black text-white truncate flex items-center gap-1.5">
                 <span className="truncate">{currentUser.name}</span>
                 {currentUser.role === "admin" ? (
-                  <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-mono font-bold">
+                  <span className="text-[9px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
                     ADMIN
                   </span>
                 ) : (
-                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-mono font-bold">
+                  <span className="text-[9px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
                     CLIENT
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-slate-300 font-mono truncate">@{currentUser.username}</div>
+              <div className="text-[11px] text-slate-400 font-mono truncate">@{currentUser.username}</div>
             </div>
           </div>
 
           {/* VERTICAL NAVIGATION TABS */}
           <div className="space-y-1.5">
-            <div className="text-[11px] font-black text-slate-300 uppercase tracking-wider px-2 mb-2">
-              Navigation Menu
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">
+              Workspace Menu
             </div>
 
             {/* Vertical Tab 1: Dashboard (Views & Analytics) */}
@@ -1460,107 +1469,123 @@ export default function MultiTenantWhatsAppSystem() {
                 setActiveTab("dashboard");
                 setIsMobileSidebarOpen(false);
               }}
-              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+              className={`w-full p-2.5 rounded-xl text-left transition-all duration-200 flex items-center gap-3 cursor-pointer group relative ${
                 activeTab === "dashboard"
-                  ? "bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white shadow-lg shadow-amber-950/60 font-black border-l-4 border-amber-300"
-                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+                  ? "bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent border border-amber-500/30 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent font-medium"
               }`}
             >
-              <span className="text-lg">📊</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition ${
+                activeTab === "dashboard" ? "bg-amber-500/20 text-amber-300" : "bg-slate-800/60 text-slate-400 group-hover:bg-slate-800 group-hover:text-white"
+              }`}>
+                📊
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold leading-tight flex items-center justify-between">
-                  <span>Dashboard</span>
+                <div className="text-xs leading-tight flex items-center justify-between">
+                  <span className="font-bold">Dashboard</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                    activeTab === "dashboard" ? "bg-white/20 text-white" : "bg-amber-950 text-amber-300 border border-amber-500/30"
+                    activeTab === "dashboard" ? "bg-amber-500/20 text-amber-300" : "bg-slate-800 text-slate-400"
                   }`}>
                     ANALYTICS
                   </span>
                 </div>
-                <div className={`text-[10px] truncate ${activeTab === "dashboard" ? "text-amber-100" : "text-slate-400 font-medium"}`}>
+                <div className="text-[10px] text-slate-400 truncate mt-0.5">
                   Views, Reach & Insights
                 </div>
               </div>
             </button>
 
-            {/* Vertical Tab 2: Post Studio (Renamed from Omni-Post Studio) */}
+            {/* Vertical Tab 2: Post Studio */}
             <button
               onClick={() => {
                 setActiveTab("social");
                 setIsMobileSidebarOpen(false);
               }}
-              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+              className={`w-full p-2.5 rounded-xl text-left transition-all duration-200 flex items-center gap-3 cursor-pointer group relative ${
                 activeTab === "social"
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-950/60 font-black border-l-4 border-indigo-300"
-                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+                  ? "bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-transparent border border-indigo-500/30 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent font-medium"
               }`}
             >
-              <span className="text-lg">✍️</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition ${
+                activeTab === "social" ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-800/60 text-slate-400 group-hover:bg-slate-800 group-hover:text-white"
+              }`}>
+                ✍️
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold leading-tight flex items-center justify-between">
-                  <span>Post Studio</span>
+                <div className="text-xs leading-tight flex items-center justify-between">
+                  <span className="font-bold">Post Studio</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                    activeTab === "social" ? "bg-white/20 text-white" : "bg-indigo-950 text-indigo-300 border border-indigo-500/30"
+                    activeTab === "social" ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-800 text-slate-400"
                   }`}>
                     PUBLISH
                   </span>
                 </div>
-                <div className={`text-[10px] truncate ${activeTab === "social" ? "text-indigo-100" : "text-slate-400 font-medium"}`}>
-                  FB, Insta, WA, LinkedIn, X, TG
+                <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                  FB, Insta, WA, LinkedIn, X
                 </div>
               </div>
             </button>
 
-            {/* Vertical Tab 2.5: Reel Studio (Instagram & Facebook Reels 9:16) */}
+            {/* Vertical Tab 2.5: Reel Studio (9:16) */}
             <button
               onClick={() => {
                 setActiveTab("reel");
                 setIsMobileSidebarOpen(false);
               }}
-              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+              className={`w-full p-2.5 rounded-xl text-left transition-all duration-200 flex items-center gap-3 cursor-pointer group relative ${
                 activeTab === "reel"
-                  ? "bg-gradient-to-r from-pink-600 via-rose-600 to-purple-600 text-white shadow-lg shadow-pink-950/60 font-black border-l-4 border-pink-300"
-                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+                  ? "bg-gradient-to-r from-pink-500/15 via-rose-500/10 to-transparent border border-pink-500/30 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent font-medium"
               }`}
             >
-              <span className="text-lg">🎬</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition ${
+                activeTab === "reel" ? "bg-pink-500/20 text-pink-300" : "bg-slate-800/60 text-slate-400 group-hover:bg-slate-800 group-hover:text-white"
+              }`}>
+                🎬
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold leading-tight flex items-center justify-between">
-                  <span>Reel Studio</span>
+                <div className="text-xs leading-tight flex items-center justify-between">
+                  <span className="font-bold">Reel Studio</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                    activeTab === "reel" ? "bg-white/20 text-white" : "bg-pink-950 text-pink-300 border border-pink-500/30"
+                    activeTab === "reel" ? "bg-pink-500/20 text-pink-300" : "bg-slate-800 text-slate-400"
                   }`}>
                     9:16 REEL
                   </span>
                 </div>
-                <div className={`text-[10px] truncate ${activeTab === "reel" ? "text-pink-100" : "text-slate-400 font-medium"}`}>
+                <div className="text-[10px] text-slate-400 truncate mt-0.5">
                   Insta & FB Viral Reels
                 </div>
               </div>
             </button>
 
-            {/* Vertical Tab 3: AI Auto Creator (Gemini Daily 5 Posts & 5s Reels) */}
+            {/* Vertical Tab 3: AI Auto Creator */}
             <button
               onClick={() => {
                 setActiveTab("ai_creator");
                 setIsMobileSidebarOpen(false);
               }}
-              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+              className={`w-full p-2.5 rounded-xl text-left transition-all duration-200 flex items-center gap-3 cursor-pointer group relative ${
                 activeTab === "ai_creator"
-                  ? "bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 text-white shadow-lg shadow-purple-950/60 font-black border-l-4 border-pink-300"
-                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+                  ? "bg-gradient-to-r from-purple-500/15 via-pink-500/10 to-transparent border border-purple-500/30 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent font-medium"
               }`}
             >
-              <span className="text-lg">🤖</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition ${
+                activeTab === "ai_creator" ? "bg-purple-500/20 text-purple-300" : "bg-slate-800/60 text-slate-400 group-hover:bg-slate-800 group-hover:text-white"
+              }`}>
+                🤖
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold leading-tight flex items-center justify-between">
-                  <span>AI Post Creator</span>
+                <div className="text-xs leading-tight flex items-center justify-between">
+                  <span className="font-bold">AI Post Creator</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                    activeTab === "ai_creator" ? "bg-white/20 text-white" : "bg-purple-950 text-purple-300 border border-purple-500/30"
+                    activeTab === "ai_creator" ? "bg-purple-500/20 text-purple-300" : "bg-slate-800 text-slate-400"
                   }`}>
                     GEMINI
                   </span>
                 </div>
-                <div className={`text-[10px] truncate ${activeTab === "ai_creator" ? "text-purple-100" : "text-slate-400 font-medium"}`}>
+                <div className="text-[10px] text-slate-400 truncate mt-0.5">
                   Daily 5 Posts & 5s Reels
                 </div>
               </div>
@@ -1572,45 +1597,60 @@ export default function MultiTenantWhatsAppSystem() {
                 setActiveTab("sender");
                 setIsMobileSidebarOpen(false);
               }}
-              className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+              className={`w-full p-2.5 rounded-xl text-left transition-all duration-200 flex items-center gap-3 cursor-pointer group relative ${
                 activeTab === "sender"
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-950/60 font-black border-l-4 border-emerald-300"
-                  : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+                  ? "bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent font-medium"
               }`}
             >
-              <span className="text-lg">🚀</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition ${
+                activeTab === "sender" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-800/60 text-slate-400 group-hover:bg-slate-800 group-hover:text-white"
+              }`}>
+                🚀
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold leading-tight flex items-center justify-between">
-                  <span>WhatsApp Campaigns</span>
+                <div className="text-xs leading-tight flex items-center justify-between">
+                  <span className="font-bold">WhatsApp Campaigns</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                    activeTab === "sender" ? "bg-white/20 text-white" : "bg-emerald-950 text-emerald-300 border border-emerald-500/30"
+                    activeTab === "sender" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-800 text-slate-400"
                   }`}>
                     BROADCAST
                   </span>
                 </div>
-                <div className={`text-[10px] truncate ${activeTab === "sender" ? "text-emerald-100" : "text-slate-400 font-medium"}`}>
+                <div className="text-[10px] text-slate-400 truncate mt-0.5">
                   Meta API & SIM Farm
                 </div>
               </div>
             </button>
 
-            {/* Vertical Tab 3: Admin Users & Credits (Admin Only) */}
+            {/* Vertical Tab 5: Admin Users & Credits */}
             {currentUser.role === "admin" && (
               <button
                 onClick={() => {
                   setActiveTab("admin");
                   setIsMobileSidebarOpen(false);
                 }}
-                className={`w-full p-3 rounded-2xl text-left transition flex items-center gap-3 cursor-pointer group ${
+                className={`w-full p-2.5 rounded-xl text-left transition-all duration-200 flex items-center gap-3 cursor-pointer group relative ${
                   activeTab === "admin"
-                    ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-950/60 font-black border-l-4 border-amber-300"
-                    : "text-slate-200 hover:text-white hover:bg-slate-800 font-semibold"
+                    ? "bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent border border-amber-500/30 text-white shadow-sm font-bold"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent font-medium"
                 }`}
               >
-                <span className="text-lg">👑</span>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition ${
+                  activeTab === "admin" ? "bg-amber-500/20 text-amber-300" : "bg-slate-800/60 text-slate-400 group-hover:bg-slate-800 group-hover:text-white"
+                }`}>
+                  👑
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold leading-tight">Users & Credits</div>
-                  <div className={`text-[10px] truncate ${activeTab === "admin" ? "text-amber-100" : "text-slate-400 font-medium"}`}>
+                  <div className="text-xs leading-tight flex items-center justify-between">
+                    <span className="font-bold">Users & Credits</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                      activeTab === "admin" ? "bg-amber-500/20 text-amber-300" : "bg-slate-800 text-slate-400"
+                    }`}>
+                      ADMIN
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate mt-0.5">
                     Client Wallets & Accounts
                   </div>
                 </div>
@@ -1620,29 +1660,43 @@ export default function MultiTenantWhatsAppSystem() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="pt-4 border-t border-slate-700 space-y-3">
+        <div className="pt-4 border-t border-slate-800/80 space-y-3">
           {/* Quick Engine Status */}
-          <div className="bg-slate-900 border border-slate-700/80 rounded-xl p-3 text-xs text-slate-200 space-y-1.5 shadow-md">
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 text-xs space-y-2 backdrop-blur-sm shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-200">
+              <span className="flex items-center gap-2 font-medium text-slate-300 text-[11px]">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 SIM Farm
               </span>
-              <span className="font-mono text-emerald-400 font-bold">{connectedSIMs.length} Active</span>
+              <span className="font-mono text-emerald-400 font-bold text-[11px]">{connectedSIMs.length} Active</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-200">
-                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span className="flex items-center gap-2 font-medium text-slate-300 text-[11px]">
+                <span className={`w-2 h-2 rounded-full ${metaConfig.hasToken ? "bg-cyan-400" : "bg-slate-500"}`}></span>
                 Meta Cloud API
               </span>
-              <span className="font-mono text-cyan-400 font-bold">{metaConfig.hasToken ? "Ready" : "Not Set"}</span>
+              <span className={`font-mono font-bold text-[11px] ${metaConfig.hasToken ? "text-cyan-400" : "text-slate-400"}`}>
+                {metaConfig.hasToken ? "Ready" : "Not Set"}
+              </span>
             </div>
           </div>
+
+          {/* Quick Jump to Buffer View */}
+          <a
+            href="/buffer"
+            className="w-full py-2 px-3 bg-slate-900/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-between cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <span>📅</span>
+              <span>Buffer View / Calendar</span>
+            </span>
+            <span className="text-[10px] text-slate-400">➔</span>
+          </a>
 
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="w-full py-2.5 px-3 bg-slate-900 hover:bg-[#2a0e16] text-slate-200 hover:text-rose-200 border border-slate-700 hover:border-rose-700/60 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            className="w-full py-2.5 px-3 bg-slate-900/60 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-800/80 hover:border-rose-800/50 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>🚪</span>
             <span>Logout Account</span>
@@ -1653,47 +1707,63 @@ export default function MultiTenantWhatsAppSystem() {
       {/* =========================================================================
           RIGHT MAIN CONTENT AREA
           ========================================================================= */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full min-h-screen bg-[#070a13] overflow-x-hidden">
         {/* Top Header inside Main Content */}
-        <header className="px-4 sm:px-8 py-4 bg-slate-950  border-b border-slate-700 sticky top-0 z-30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <header className="px-3 sm:px-8 py-3 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-30 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             {/* Mobile Sidebar Hamburger Toggle */}
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white cursor-pointer"
+              className="lg:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white cursor-pointer shrink-0"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
 
-            <div>
-              <div className="text-[11px] text-slate-400 flex items-center gap-1.5 font-medium">
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] text-slate-400 flex items-center gap-1.5 font-medium truncate">
                 <span>Anant Reach</span>
                 <span>/</span>
-                <span className="text-amber-400 capitalize">
+                <span className="text-amber-400 font-semibold capitalize truncate">
                   {activeTab === "dashboard"
                     ? "Analytics Dashboard"
                     : activeTab === "social"
                     ? "Post Studio"
+                    : activeTab === "reel"
+                    ? "Reel Studio"
+                    : activeTab === "ai_creator"
+                    ? "AI Auto Creator"
                     : activeTab === "sender"
                     ? "WhatsApp Campaigns"
                     : "User Management"}
                 </span>
               </div>
-              <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                {activeTab === "dashboard" && "📊 Social Media Views & Performance Dashboard"}
-                {activeTab === "social" && "✍️ Post Studio: Multi-Channel Social Publisher"}
+              <h1 className="text-sm sm:text-lg font-black text-white flex items-center gap-2 truncate">
+                {activeTab === "dashboard" && "📊 Social Media Analytics & Performance"}
+                {activeTab === "social" && "✍️ Multi-Channel Post Studio"}
+                {activeTab === "reel" && "🎬 9:16 Viral Reel Studio"}
+                {activeTab === "ai_creator" && "✨ AI Auto-Pilot Post & Reel Studio"}
                 {activeTab === "sender" && "🚀 WhatsApp Bulk Campaign Dispatcher"}
                 {activeTab === "admin" && "👑 Admin User & Credit Management"}
               </h1>
             </div>
           </div>
 
+          {/* Header Right Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setActiveTab("social")}
+              className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 transition cursor-pointer active:scale-95"
+            >
+              <span>✍️</span>
+              <span>Create Post</span>
+            </button>
+          </div>
         </header>
 
         {/* Scrollable Page Body */}
-        <div className="p-4 sm:p-6 lg:p-8 flex-1">
+        <div className="p-3 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-x-hidden">
 
       {/* =========================================================================
           META PRICING & BUY MESSAGES MODAL (AS PER META POLICY)
@@ -1909,9 +1979,17 @@ export default function MultiTenantWhatsAppSystem() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer"
+                  disabled={isVerifyingMetaConfig}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Save Meta Credentials
+                  {isVerifyingMetaConfig ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span>Verifying with Meta API...</span>
+                    </>
+                  ) : (
+                    <span>Verify & Save to Supabase</span>
+                  )}
                 </button>
               </div>
             </form>

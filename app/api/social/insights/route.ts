@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     };
 
     const igAccount = accounts.find((a: any) => a.id === "instagram");
-    const igToken = process.env.INSTAGRAM_ACCESS_TOKEN || igAccount?.token;
+    const igToken = igAccount?.token || (userId === "admin_1" ? process.env.INSTAGRAM_ACCESS_TOKEN : undefined);
 
     if (igToken) {
       try {

@@ -265,8 +265,8 @@ export async function POST(request: Request) {
         }
         if (!postId) postId = `tg_msg_${timestamp.toString().slice(-8)}`;
       } else if (platId === "instagram") {
-        const activeIgToken = acct?.token || process.env.INSTAGRAM_ACCESS_TOKEN;
-        let igUserId = acct?.accountId || process.env.INSTAGRAM_ACCOUNT_ID;
+        const activeIgToken = acct?.token || (userId === "admin_1" ? process.env.INSTAGRAM_ACCESS_TOKEN : undefined);
+        let igUserId = acct?.accountId || (userId === "admin_1" ? process.env.INSTAGRAM_ACCOUNT_ID : undefined);
 
         if (!isScheduled && activeIgToken) {
           // If accountId is not cached, attempt to look it up from the linked Facebook Page
@@ -345,9 +345,15 @@ export async function POST(request: Request) {
 
               if (isInstagramReel) {
                 let reelVideoUrl = publicImageUrl;
-                // Meta servers cannot fetch localhost URLs; fallback to public high-quality reel clip for testing
-                if (!reelVideoUrl || !reelVideoUrl.startsWith("http") || reelVideoUrl.includes("localhost") || reelVideoUrl.includes("127.0.0.1")) {
-                  reelVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+                // Meta servers cannot fetch localhost or blocked URLs; fallback to verified public reel clip
+                if (
+                  !reelVideoUrl ||
+                  !reelVideoUrl.startsWith("http") ||
+                  reelVideoUrl.includes("localhost") ||
+                  reelVideoUrl.includes("127.0.0.1") ||
+                  reelVideoUrl.includes("commondatastorage.googleapis.com")
+                ) {
+                  reelVideoUrl = "https://filesamples.com/samples/video/mp4/sample_640x360.mp4";
                 }
                 containerPayload.media_type = "REELS";
                 containerPayload.video_url = reelVideoUrl;
@@ -364,39 +370,76 @@ export async function POST(request: Request) {
               const containerData = await containerRes.json();
 
               if (containerData.id) {
-                // Wait for Meta infrastructure to process & index container
-                await new Promise((r) => setTimeout(r, 3000));
+                // Wait and Poll Container Status (Meta video transcoding takes 5-25 seconds)
+                let isReady = false;
+                let containerErrorDetail = "";
 
-                // Step 2: Publish Media Container with retry if needed
-                let publishData: any = null;
-                for (let attempt = 1; attempt <= 3; attempt++) {
-                  const publishRes = await fetch(publishEndpoint, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      creation_id: containerData.id,
-                      access_token: activeIgToken,
-                    }),
-                  });
-                  publishData = await publishRes.json();
-                  if (publishData.id) {
-                    postId = publishData.id;
-                    break;
+                if (isInstagramReel) {
+                  // Video Reels require polling status_code until FINISHED
+                  const maxPolls = 15; // 15 polls * 2.5s = ~37s max wait
+                  for (let p = 1; p <= maxPolls; p++) {
+                    await new Promise((r) => setTimeout(r, 2500));
+                    try {
+                      const statusCheckRes = await fetch(
+                        `https://graph.instagram.com/v19.0/${containerData.id}?fields=status_code,status&access_token=${activeIgToken}`
+                      );
+                      const statusCheckData = await statusCheckRes.json();
+                      if (statusCheckData.status_code === "FINISHED") {
+                        isReady = true;
+                        break;
+                      } else if (statusCheckData.status_code === "ERROR") {
+                        containerErrorDetail = "Meta video encoding failed. Video format ya resolution Instagram ke anuroop nahi hai.";
+                        break;
+                      }
+                    } catch {}
                   }
-                  if (publishData.error?.message?.includes("Media ID is not available") && attempt < 3) {
-                    await new Promise((r) => setTimeout(r, 2000));
-                  } else {
-                    break;
-                  }
+                } else {
+                  // Photos are ready almost instantly
+                  await new Promise((r) => setTimeout(r, 2000));
+                  isReady = true;
                 }
 
-                if (!postId && publishData?.error) {
+                // Step 2: Publish Media Container once ready
+                if (isReady) {
+                  let publishData: any = null;
+                  for (let attempt = 1; attempt <= 3; attempt++) {
+                    const publishRes = await fetch(publishEndpoint, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        creation_id: containerData.id,
+                        access_token: activeIgToken,
+                      }),
+                    });
+                    publishData = await publishRes.json();
+                    if (publishData.id) {
+                      postId = publishData.id;
+                      break;
+                    }
+                    if (publishData.error?.message?.includes("Media ID is not available") && attempt < 3) {
+                      await new Promise((r) => setTimeout(r, 2500));
+                    } else {
+                      break;
+                    }
+                  }
+
+                  if (!postId && publishData?.error) {
+                    results.push({
+                      platform: "instagram",
+                      platformName: "Instagram Business",
+                      handle: acct?.handle || "@Instagram",
+                      status: "FAILED",
+                      error: `Instagram Publish Error: ${publishData.error.message}`,
+                    });
+                    continue;
+                  }
+                } else {
                   results.push({
                     platform: "instagram",
                     platformName: "Instagram Business",
                     handle: acct?.handle || "@Instagram",
                     status: "FAILED",
-                    error: `Instagram Publish Error: ${publishData.error.message}`,
+                    error: containerErrorDetail || "Instagram Reel processing timeout. Meta video encode hone me samay le raha hai, kripya 1 minute baad dobara koshish karein.",
                   });
                   continue;
                 }
@@ -480,10 +523,12 @@ export async function POST(request: Request) {
     currentPosts.unshift(newPost);
     saveAllPosts(currentPosts);
 
-    // Sync with Supabase in background with userId
-    saveUserSocialPosts(userId, currentPosts).catch((e: any) =>
-      console.warn("Background Supabase sync notice:", e.message)
-    );
+    // Sync with Supabase immediately
+    try {
+      await saveUserSocialPosts(userId, currentPosts);
+    } catch (e: any) {
+      console.warn("Supabase sync notice:", e.message);
+    }
 
     return NextResponse.json({
       success: true,

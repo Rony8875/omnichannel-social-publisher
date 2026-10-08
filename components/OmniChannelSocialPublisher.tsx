@@ -148,6 +148,52 @@ export default function OmniChannelSocialPublisher({
   const [isTgVerifying, setIsTgVerifying] = useState<boolean>(false);
   const [tgError, setTgError] = useState<string>("");
 
+  // Dedicated Meta Token Verification Modal (Direct Meta Graph API & Supabase Save)
+  const [showMetaDirectModal, setShowMetaDirectModal] = useState<SocialAccount | null>(null);
+  const [metaTokenInput, setMetaTokenInput] = useState<string>("");
+  const [isVerifyingMetaToken, setIsVerifyingMetaToken] = useState<boolean>(false);
+  const [metaTokenError, setMetaTokenError] = useState<string>("");
+  const [metaTokenSuccess, setMetaTokenSuccess] = useState<string>("");
+
+  const handleVerifyMetaTokenDirect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showMetaDirectModal || !metaTokenInput.trim()) return;
+
+    setIsVerifyingMetaToken(true);
+    setMetaTokenError("");
+    setMetaTokenSuccess("");
+
+    try {
+      const res = await fetch("/api/social/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId: showMetaDirectModal.id,
+          action: "meta_verify",
+          token: metaTokenInput.trim(),
+          userId: activeUserId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setMetaTokenSuccess(data.message || "Meta token verified & saved to Supabase!");
+        fetchAccounts();
+        setTimeout(() => {
+          setShowMetaDirectModal(null);
+          setMetaTokenInput("");
+          setMetaTokenSuccess("");
+        }, 1500);
+      } else {
+        setMetaTokenError(data.error || "Meta Verification failed");
+      }
+    } catch (err: any) {
+      setMetaTokenError(`Network Error: ${err.message}`);
+    } finally {
+      setIsVerifyingMetaToken(false);
+    }
+  };
+
   // Fetch WhatsApp Engine Sessions
   const fetchWaSessions = async () => {
     setIsWaLoading(true);
@@ -1040,10 +1086,13 @@ export default function OmniChannelSocialPublisher({
       {/* =========================================================================
           TOP BANNER: OMNI-CHANNEL ACCOUNTS OVERVIEW & AI LAUNCHER
           ========================================================================= */}
-      <div className="bg-[#111827] border-2 border-amber-500/50 rounded-3xl p-5 sm:p-7 shadow-2xl">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="bg-gradient-to-br from-slate-900/90 via-[#181628]/80 to-slate-900/90 border border-amber-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+        {/* Glow backdrop */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-white border-2 border-amber-400 shadow-md shrink-0 hidden sm:flex items-center justify-center overflow-hidden p-1">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-amber-400/50 shadow-md shrink-0 hidden sm:flex items-center justify-center overflow-hidden p-1.5 backdrop-blur-sm">
               <img
                 src="/thumbnail2.svg"
                 alt="Anant Reach Social Media"
@@ -1051,15 +1100,15 @@ export default function OmniChannelSocialPublisher({
               />
             </div>
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-semibold mb-2 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                Anant Reach • AI Smart Social Publisher
+                Anant Reach • Multi-Channel Social Hub
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
                 <span>🌐</span> Single Post ➔ All Social Media Accounts
               </h1>
-              <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl font-medium">
-                AI se viral captions banayein aur unhe alag-alag date & time par schedule ya instantly sabhi platforms par publish karein!
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl font-normal leading-relaxed">
+                Viral captions banayein aur unhe custom schedule ya 1-click me sabhi connected channels par instantly publish karein!
               </p>
             </div>
           </div>
@@ -1073,16 +1122,16 @@ export default function OmniChannelSocialPublisher({
                   setAiTopic("Festive Season 40% discount offer");
                 }
               }}
-              className="px-4 py-3 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black rounded-2xl text-xs transition flex items-center gap-2 cursor-pointer shadow-xl shadow-amber-950/50 border border-amber-300/60 active:scale-95"
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-bold rounded-xl text-xs transition flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 hover:scale-[1.02]"
             >
               <span className="text-base">✨</span>
               <span>AI Post Creator</span>
-              <span className="bg-black/20 text-[10px] px-1.5 py-0.5 rounded-full font-mono font-black">NEW</span>
+              <span className="bg-black/20 text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold">AI</span>
             </button>
 
             <button
               onClick={() => setShowAccountsModal(true)}
-              className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-xl shadow-indigo-950/50 border border-indigo-400/30 active:scale-95"
+              className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-white rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer border border-slate-700/80 active:scale-95 shadow-sm"
             >
               <span>⚙️</span>
               <span>Linked Accounts ({connectedCount})</span>
@@ -1091,24 +1140,24 @@ export default function OmniChannelSocialPublisher({
         </div>
 
         {/* Quick Account Status Pills */}
-        <div className="mt-5 pt-4 border-t-2 border-slate-700/80 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-200 font-bold mr-1 flex items-center gap-1">
-            <span>📡</span> Active Channels:
+        <div className="mt-6 pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-2 relative z-10">
+          <span className="text-xs text-slate-400 font-medium mr-1 flex items-center gap-1.5">
+            <span>📡</span> Channels:
           </span>
           {accounts.map((acc) => (
             <div
               key={acc.id}
               onClick={() => handleOpenOAuthPopup(acc.id)}
               title={`Click to open official ${acc.platform} login & verify`}
-              className={`px-3 py-1.5 rounded-xl border-2 text-xs font-bold flex items-center gap-2 cursor-pointer transition hover:scale-105 shadow-sm ${
+              className={`px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-2 cursor-pointer transition hover:scale-105 shadow-sm backdrop-blur-sm ${
                 acc.connected
-                  ? "bg-[#062419] border-emerald-500/60 text-emerald-300 hover:border-emerald-400"
-                  : "bg-[#0b1020] border-slate-700 text-slate-300 hover:border-slate-500"
+                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:border-emerald-400"
+                  : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700"
               }`}
             >
-              <span className={`w-2.5 h-2.5 rounded-full ${acc.connected ? "bg-emerald-400 animate-pulse" : "bg-rose-500"}`}></span>
-              <span className="font-extrabold text-white">{acc.platform}</span>
-              <span className="text-[11px] text-slate-300 font-mono hidden sm:inline">{acc.handle}</span>
+              <span className={`w-2 h-2 rounded-full ${acc.connected ? "bg-emerald-400 animate-pulse" : "bg-rose-500"}`}></span>
+              <span className="font-bold text-white capitalize">{acc.platform}</span>
+              <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">{acc.handle}</span>
             </div>
           ))}
         </div>
@@ -1963,95 +2012,97 @@ export default function OmniChannelSocialPublisher({
               </div>
             </div>
 
-            {/* 7-Day Month Grid */}
-            <div className="bg-slate-950 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 bg-slate-900 border-b border-slate-700 text-center text-xs font-bold text-slate-400 py-2.5">
-                <div className="text-rose-400">Sun</div>
-                <div>Mon</div>
-                <div>Tue</div>
-                <div>Wed</div>
-                <div>Thu</div>
-                <div>Fri</div>
-                <div className="text-indigo-400">Sat</div>
-              </div>
+            {/* 7-Day Month Grid (Horizontally scrollable on small mobile screens) */}
+            <div className="overflow-x-auto w-full pb-2">
+              <div className="bg-slate-950 border border-slate-700 rounded-2xl overflow-hidden shadow-xl min-w-[580px]">
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 bg-slate-900 border-b border-slate-700 text-center text-xs font-bold text-slate-400 py-2.5">
+                  <div className="text-rose-400">Sun</div>
+                  <div>Mon</div>
+                  <div>Tue</div>
+                  <div>Wed</div>
+                  <div>Thu</div>
+                  <div>Fri</div>
+                  <div className="text-indigo-400">Sat</div>
+                </div>
 
-              {/* Grid Cells */}
-              <div className="grid grid-cols-7 divide-x divide-y divide-slate-800/80">
-                {calendarCells.map((cell, idx) => {
-                  const isSelected = cell.dateStr === activeSelectedDay;
-                  const hasScheduled = cell.scheduledList.length > 0;
+                {/* Grid Cells */}
+                <div className="grid grid-cols-7 divide-x divide-y divide-slate-800/80">
+                  {calendarCells.map((cell, idx) => {
+                    const isSelected = cell.dateStr === activeSelectedDay;
+                    const hasScheduled = cell.scheduledList.length > 0;
 
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => {
-                        if (cell.dateStr) setSelectedCalDateStr(cell.dateStr);
-                      }}
-                      className={`min-h-[90px] sm:min-h-[105px] p-2 flex flex-col justify-between transition cursor-pointer ${
-                        !cell.isCurrentMonth
-                          ? "bg-slate-950 text-slate-300 opacity-40 cursor-default"
-                          : isSelected
-                          ? "bg-[#131b38] ring-2 ring-indigo-500 z-10"
-                          : hasScheduled
-                          ? "bg-[#131b38] hover:bg-[#131b38]"
-                          : "hover:bg-slate-900"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`text-xs font-bold rounded-lg px-1.5 py-0.5 ${
-                            cell.isToday
-                              ? "bg-indigo-600 text-white shadow-sm"
-                              : isSelected
-                              ? "bg-slate-800 text-indigo-300"
-                              : "text-slate-300"
-                          }`}
-                        >
-                          {cell.dayNum}
-                        </span>
-
-                        {cell.isToday && (
-                          <span className="text-[9px] font-bold text-indigo-400 bg-[#131b38] px-1 rounded hidden sm:inline">
-                            Today
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          if (cell.dateStr) setSelectedCalDateStr(cell.dateStr);
+                        }}
+                        className={`min-h-[90px] sm:min-h-[105px] p-2 flex flex-col justify-between transition cursor-pointer ${
+                          !cell.isCurrentMonth
+                            ? "bg-slate-950 text-slate-300 opacity-40 cursor-default"
+                            : isSelected
+                            ? "bg-[#131b38] ring-2 ring-indigo-500 z-10"
+                            : hasScheduled
+                            ? "bg-[#131b38] hover:bg-[#131b38]"
+                            : "hover:bg-slate-900"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-xs font-bold rounded-lg px-1.5 py-0.5 ${
+                              cell.isToday
+                                ? "bg-indigo-600 text-white shadow-sm"
+                                : isSelected
+                                ? "bg-slate-800 text-indigo-300"
+                                : "text-slate-300"
+                            }`}
+                          >
+                            {cell.dayNum}
                           </span>
-                        )}
-                      </div>
 
-                      {/* Scheduled Markers */}
-                      {hasScheduled && (
-                        <div className="mt-1 space-y-1">
-                          <div className="px-1.5 py-0.5 rounded-md bg-gradient-to-r from-indigo-950 to-indigo-900/90 border border-indigo-500/50 text-indigo-300 text-[10px] font-bold truncate flex items-center justify-between">
-                            <span className="truncate">⏳ {cell.scheduledList.length} Scheduled</span>
-                          </div>
-
-                          {/* Mini Platform Icons */}
-                          <div className="flex flex-wrap items-center gap-0.5 pt-0.5">
-                            {cell.scheduledList.slice(0, 1).map((p) =>
-                              p.platforms.slice(0, 3).map((plat) => {
-                                const iconMap: Record<string, string> = {
-                                  facebook: "👥",
-                                  instagram: "📸",
-                                  whatsapp: "💬",
-                                  linkedin: "💼",
-                                  twitter: "🐦",
-                                  telegram: "✈️",
-                                };
-                                return (
-                                  <span key={plat} className="text-[11px]" title={plat}>
-                                    {iconMap[plat] || "🌐"}
-                                  </span>
-                                );
-                              })
-                            )}
-                          </div>
+                          {cell.isToday && (
+                            <span className="text-[9px] font-bold text-indigo-400 bg-[#131b38] px-1 rounded hidden sm:inline">
+                              Today
+                            </span>
+                          )}
                         </div>
-                      )}
 
-                      <div className="h-1"></div>
-                    </div>
-                  );
-                })}
+                        {/* Scheduled Markers */}
+                        {hasScheduled && (
+                          <div className="mt-1 space-y-1">
+                            <div className="px-1.5 py-0.5 rounded-md bg-gradient-to-r from-indigo-950 to-indigo-900/90 border border-indigo-500/50 text-indigo-300 text-[10px] font-bold truncate flex items-center justify-between">
+                              <span className="truncate">⏳ {cell.scheduledList.length} Scheduled</span>
+                            </div>
+
+                            {/* Mini Platform Icons */}
+                            <div className="flex flex-wrap items-center gap-0.5 pt-0.5">
+                              {cell.scheduledList.slice(0, 1).map((p) =>
+                                p.platforms.slice(0, 3).map((plat) => {
+                                  const iconMap: Record<string, string> = {
+                                    facebook: "👥",
+                                    instagram: "📸",
+                                    whatsapp: "💬",
+                                    linkedin: "💼",
+                                    twitter: "🐦",
+                                    telegram: "✈️",
+                                  };
+                                  return (
+                                    <span key={plat} className="text-[11px]" title={plat}>
+                                      {iconMap[plat] || "🌐"}
+                                    </span>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="h-1"></div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -2606,6 +2657,37 @@ export default function OmniChannelSocialPublisher({
                             <span>✈️</span>
                             <span>Direct Link Telegram (Bot Token)</span>
                           </button>
+                        ) : acc.id === "facebook" || acc.id === "instagram" ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              onClick={() => {
+                                setShowMetaDirectModal(acc);
+                                setMetaTokenInput(acc.token || "");
+                                setMetaTokenError("");
+                                setMetaTokenSuccess("");
+                              }}
+                              className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-1 active:scale-95"
+                              title="Direct Meta Access Token (EAAG... / IGAA...) se verify karein"
+                            >
+                              <span>🔑</span>
+                              <span>Meta Token Link</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenOAuthPopup(acc.id)}
+                              className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-1 active:scale-95"
+                              title="Official Meta Login Popup"
+                            >
+                              <span>🌐</span>
+                              <span>OAuth Popup</span>
+                            </button>
+                            <button
+                              onClick={() => handleQuickConnect(acc)}
+                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer transition active:scale-95"
+                              title="1-Click Quick Connect"
+                            >
+                              <span>⚡</span>
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={() => handleQuickConnect(acc)}
@@ -2823,6 +2905,112 @@ export default function OmniChannelSocialPublisher({
           </div>
         </div>
       )}
+      {/* =========================================================================
+          DIRECT META GRAPH API TOKEN VERIFICATION & SUPABASE MODAL
+          ========================================================================= */}
+      {showMetaDirectModal && (
+        <div className="fixed inset-0 bg-black/90 z-[85] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-700 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 text-white flex items-center justify-center text-xl shadow-lg">
+                  {showMetaDirectModal.id === "instagram" ? "📸" : "f"}
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    Verify {showMetaDirectModal.name} with Meta
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Live Meta Graph API Verification ➔ Direct Save to Supabase
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowMetaDirectModal(null);
+                  setMetaTokenError("");
+                  setMetaTokenSuccess("");
+                }}
+                className="text-slate-400 hover:text-white cursor-pointer text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Explainer Banner */}
+            <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl mb-4 text-xs text-slate-300 leading-relaxed space-y-1.5">
+              <div className="font-bold text-white flex items-center gap-1.5">
+                <span>🔐</span> Multi-Tenant Supabase Token Security:
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Aapka token kisi global file me nahi, seedhe aapki user ID ke saath <strong>Supabase Cloud Database</strong> me save hoga. Meta Graph API se pehle 100% live verify hoga taaki koi expired ya galat token na jaye.
+              </p>
+            </div>
+
+            {metaTokenError && (
+              <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 rounded-xl text-xs mb-3 font-medium flex items-center gap-2">
+                <span>❌</span>
+                <span>{metaTokenError}</span>
+              </div>
+            )}
+
+            {metaTokenSuccess && (
+              <div className="p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-xl text-xs mb-3 font-medium flex items-center gap-2">
+                <span>✅</span>
+                <span>{metaTokenSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyMetaTokenDirect} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-200 block mb-1.5">
+                  Meta Access Token (EAAG... / IGAA...):
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={metaTokenInput}
+                  onChange={(e) => setMetaTokenInput(e.target.value)}
+                  placeholder="Meta Graph API Explorer ya System User se generate kiya gaya Token paste karein (EAAG... ya IGAA...)"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-emerald-400 font-mono placeholder:text-slate-600 focus:outline-none focus:border-purple-400"
+                ></textarea>
+                <span className="text-[10px] text-slate-500 block mt-1">
+                  Tip: Token submit hote hi Meta API Page Name aur Instagram Account auto-fetch kar lega.
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMetaDirectModal(null)}
+                  disabled={isVerifyingMetaToken}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifyingMetaToken || !metaTokenInput.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-lg shadow-purple-950/50 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isVerifyingMetaToken ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span>Verifying with Meta API...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>⚡</span>
+                      <span>Verify & Save to Supabase</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* =========================================================================
           DIRECT WHATSAPP LINKING MODAL (LIVE QR & PHONE PAIRING CODE)
           ========================================================================= */}

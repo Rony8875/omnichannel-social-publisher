@@ -8,20 +8,18 @@ export async function GET(request: Request) {
 
     const accounts = await fetchUserSocialAccounts(userId);
 
-    // If dedicated INSTAGRAM_ACCESS_TOKEN is configured in .env.local, ensure Instagram is connected
-    if (process.env.INSTAGRAM_ACCESS_TOKEN) {
-      const igIdx = accounts.findIndex((a: any) => a.id === "instagram");
-      if (igIdx !== -1) {
-        accounts[igIdx].connected = true;
-        accounts[igIdx].token = process.env.INSTAGRAM_ACCESS_TOKEN;
-        if (process.env.INSTAGRAM_ACCOUNT_ID) {
-          accounts[igIdx].accountId = process.env.INSTAGRAM_ACCOUNT_ID;
-        }
-        if (process.env.INSTAGRAM_HANDLE) {
-          accounts[igIdx].handle = process.env.INSTAGRAM_HANDLE;
-        } else if (!accounts[igIdx].handle) {
-          accounts[igIdx].handle = "@InstagramBusiness";
-        }
+    // Only provide .env.local fallback for admin_1 if the account has NO token saved in Supabase
+    const igIdx = accounts.findIndex((a: any) => a.id === "instagram");
+    if (igIdx !== -1 && !accounts[igIdx].token && userId === "admin_1" && process.env.INSTAGRAM_ACCESS_TOKEN) {
+      accounts[igIdx].connected = true;
+      accounts[igIdx].token = process.env.INSTAGRAM_ACCESS_TOKEN;
+      if (process.env.INSTAGRAM_ACCOUNT_ID) {
+        accounts[igIdx].accountId = process.env.INSTAGRAM_ACCOUNT_ID;
+      }
+      if (process.env.INSTAGRAM_HANDLE) {
+        accounts[igIdx].handle = process.env.INSTAGRAM_HANDLE;
+      } else if (!accounts[igIdx].handle) {
+        accounts[igIdx].handle = "@InstagramBusiness";
       }
     }
 
@@ -53,6 +51,132 @@ export async function POST(request: Request) {
         { success: false, error: "Account not found for this user" },
         { status: 404 }
       );
+    }
+
+    // =========================================================================
+    // ACTION: DIRECT LIVE META GRAPH API VERIFICATION & SUPABASE PERSISTENCE
+    // =========================================================================
+    if (action === "meta_verify") {
+      const cleanToken = (token || "").trim();
+      if (!cleanToken || cleanToken.length < 15) {
+        return NextResponse.json(
+          { success: false, error: "Kripya valid Meta Access Token (EAAG... / IGAA...) enter karein!" },
+          { status: 400 }
+        );
+      }
+
+      let metaUserName = "";
+      let metaUserId = "";
+      let linkedPages: Array<{ id: string; name: string; access_token: string; igId?: string; igUsername?: string }> = [];
+      let isVerified = false;
+
+      // 1. Verify directly with Meta Graph API
+      try {
+        if (cleanToken.startsWith("IGAA") || cleanToken.startsWith("IGQJ")) {
+          // Instagram Basic Display / Graph Token
+          const igMeRes = await fetch(
+            `https://graph.instagram.com/v19.0/me?fields=id,username,account_type&access_token=${encodeURIComponent(cleanToken)}`
+          );
+          const igMeData = await igMeRes.json();
+          if (igMeData.id) {
+            isVerified = true;
+            metaUserId = igMeData.id;
+            metaUserName = igMeData.username ? `@${igMeData.username}` : "Instagram Creator";
+          } else {
+            return NextResponse.json(
+              { success: false, error: `Meta Instagram API Error: ${igMeData.error?.message || "Invalid Instagram Token"}` },
+              { status: 400 }
+            );
+          }
+        } else {
+          // Standard Meta / Facebook Graph API Token
+          const meRes = await fetch(
+            `https://graph.facebook.com/v19.0/me?fields=id,name&access_token=${encodeURIComponent(cleanToken)}`
+          );
+          const meData = await meRes.json();
+
+          if (meData.id) {
+            isVerified = true;
+            metaUserId = meData.id;
+            metaUserName = meData.name || "Meta User";
+
+            // Also fetch linked Facebook Pages & Instagram Business Accounts
+            try {
+              const pagesRes = await fetch(
+                `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${encodeURIComponent(cleanToken)}`
+              );
+              const pagesData = await pagesRes.json();
+              if (pagesData.data && Array.isArray(pagesData.data)) {
+                linkedPages = pagesData.data.map((p: any) => ({
+                  id: p.id,
+                  name: p.name,
+                  access_token: p.access_token || cleanToken,
+                  igId: p.instagram_business_account?.id,
+                  igUsername: p.instagram_business_account?.username ? `@${p.instagram_business_account.username}` : undefined,
+                }));
+              }
+            } catch {}
+          } else {
+            return NextResponse.json(
+              { success: false, error: `Meta Graph API Error: ${meData.error?.message || "Invalid or Expired Meta Token"}` },
+              { status: 400 }
+            );
+          }
+        }
+      } catch (err: any) {
+        return NextResponse.json(
+          { success: false, error: `Meta API Connection Error: ${err.message}` },
+          { status: 500 }
+        );
+      }
+
+      if (!isVerified) {
+        return NextResponse.json(
+          { success: false, error: "Meta verification could not validate the token." },
+          { status: 400 }
+        );
+      }
+
+      // 2. Update Verified Account State for THIS User
+      const verifiedAt = new Date().toISOString();
+      const targetPage = linkedPages.length > 0 ? linkedPages[0] : null;
+
+      if (accountId === "facebook") {
+        accounts[index].connected = true;
+        accounts[index].token = targetPage?.access_token || cleanToken;
+        accounts[index].pageId = targetPage?.id || metaUserId;
+        accounts[index].handle = targetPage?.name || metaUserName;
+        accounts[index].verifiedAt = verifiedAt;
+      } else if (accountId === "instagram") {
+        accounts[index].connected = true;
+        accounts[index].token = targetPage?.access_token || cleanToken;
+        accounts[index].accountId = targetPage?.igId || metaUserId;
+        accounts[index].handle = targetPage?.igUsername || (metaUserName.startsWith("@") ? metaUserName : `@${metaUserName.replace(/\s+/g, "_")}`);
+        accounts[index].verifiedAt = verifiedAt;
+      }
+
+      // If page has a linked Instagram account and we verified Facebook, also auto-link Instagram!
+      if (accountId === "facebook" && targetPage?.igId) {
+        const igIdx = accounts.findIndex((a: any) => a.id === "instagram");
+        if (igIdx !== -1) {
+          accounts[igIdx].connected = true;
+          accounts[igIdx].token = targetPage.access_token || cleanToken;
+          accounts[igIdx].accountId = targetPage.igId;
+          accounts[igIdx].handle = targetPage.igUsername || `@${metaUserName.replace(/\s+/g, "_")}`;
+          accounts[igIdx].verifiedAt = verifiedAt;
+        }
+      }
+
+      // 3. Save strictly to Supabase Database for this userId
+      await saveUserSocialAccounts(userId, accounts);
+
+      return NextResponse.json({
+        success: true,
+        message: `🎉 Meta Graph API Verified! ${accounts[index].name} (${accounts[index].handle}) successfully linked & saved to Supabase!`,
+        metaUser: { id: metaUserId, name: metaUserName, pagesCount: linkedPages.length },
+        account: accounts[index],
+        accounts,
+      });
     }
 
     if (action === "login_verify") {

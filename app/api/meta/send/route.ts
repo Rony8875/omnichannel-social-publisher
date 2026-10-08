@@ -1,21 +1,5 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-const CONFIG_FILE = path.join(process.cwd(), "data", "meta_config.json");
-
-function getConfig() {
-  if (!fs.existsSync(CONFIG_FILE)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
-  } catch {
-    return {};
-  }
-}
-
-function saveConfig(cfg: any) {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), "utf-8");
-}
+import { fetchUserMetaConfig, saveUserMetaConfig } from "@/lib/supabase";
 
 function formatPhone(p: string): string {
   let clean = p.replace(/[^0-9]/g, "");
@@ -28,9 +12,9 @@ function formatPhone(p: string): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { recipients, message, messages, templateName, languageCode } = body;
+    const { recipients, message, messages, templateName, languageCode, userId = "admin_1" } = body;
 
-    const config = getConfig();
+    const config = await fetchUserMetaConfig(userId);
 
     if (!config.accessToken || !config.phoneNumberId) {
       return NextResponse.json(
@@ -142,7 +126,7 @@ export async function POST(request: Request) {
 
     // Track free tier usage
     config.freeTierUsed = (config.freeTierUsed || 0) + successCount;
-    saveConfig(config);
+    await saveUserMetaConfig(userId, config);
 
     return NextResponse.json({
       success: true,

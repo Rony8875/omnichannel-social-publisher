@@ -35,8 +35,15 @@ export default function AIPostCreator({
   const [posts, setPosts] = useState<AIPost[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [customTopic, setCustomTopic] = useState<string>("");
   const [publishingPostId, setPublishingPostId] = useState<string | null>(null);
+
+  // Form States (Requested by User: Title, Description, Attachment Type, Post Count)
+  const [formTitle, setFormTitle] = useState<string>("");
+  const [formDescription, setFormDescription] = useState<string>("");
+  const [formAttachmentType, setFormAttachmentType] = useState<"image" | "video" | "mix">("mix");
+  const [formPostCount, setFormPostCount] = useState<number>(5);
+  const [formTone, setFormTone] = useState<string>("viral");
+  const [formLanguage, setFormLanguage] = useState<string>("hinglish");
 
   // Live Publish Feedback Modal State
   const [publishModalResult, setPublishModalResult] = useState<{
@@ -47,8 +54,10 @@ export default function AIPostCreator({
     error?: string;
   }>({ isOpen: false, status: "publishing", title: "" });
 
-  // Gemini API Key Config State
+  // AI API Key & Provider Config State (Supabase Integrated)
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+  const [aiProvider, setAiProvider] = useState<"gemini" | "openai">("gemini");
+  const [aiModel, setAiModel] = useState<string>("gemini-1.5-flash");
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const [brandNameInput, setBrandNameInput] = useState<string>("Anant Reach");
   const [businessNicheInput, setBusinessNicheInput] = useState<string>(
@@ -57,6 +66,7 @@ export default function AIPostCreator({
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const [apiKeyMasked, setApiKeyMasked] = useState<string>("");
   const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
+  const [isTestingKey, setIsTestingKey] = useState<boolean>(false);
   const [configSuccessMsg, setConfigSuccessMsg] = useState<string>("");
   const [testResult, setTestResult] = useState<string>("");
 
@@ -77,22 +87,22 @@ export default function AIPostCreator({
   const reelVideoPresets = [
     {
       name: "🚀 Tech & Growth Loop",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      url: "https://filesamples.com/samples/video/mp4/sample_640x360.mp4",
       theme: "neon-cyber",
     },
     {
-      name: "✨ Luxury Gold Motion",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+      name: "✨ Motion Visual Flow",
+      url: "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
       theme: "luxury-gold",
     },
     {
       name: "🔥 High-Impact Energy",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+      url: "https://filesamples.com/samples/video/mp4/sample_960x400_ocean_with_audio.mp4",
       theme: "gradient-pulse",
     },
     {
-      name: "⚡ Dynamic Business Flow",
-      url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
+      name: "⚡ Dynamic Business Reel",
+      url: "https://filesamples.com/samples/video/mp4/sample_960x540.mp4",
       theme: "ambient-aurora",
     },
   ];
@@ -116,7 +126,6 @@ export default function AIPostCreator({
       setEditMediaType("image");
     }
 
-    // Instant local preview
     try {
       const localUrl = URL.createObjectURL(file);
       setEditMediaUrl(localUrl);
@@ -136,7 +145,6 @@ export default function AIPostCreator({
       }
     } catch (err) {
       console.warn("Upload error:", err);
-      // Fallback to FileReader data URL
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === "string") {
@@ -149,76 +157,20 @@ export default function AIPostCreator({
     }
   };
 
-  // Quick card video upload directly on 5 daily cards
-  const handleCardVideoUpload = async (postId: string, file: File) => {
-    const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|webm|m4v|avi|mkv)$/i.test(file.name);
-    if (!isVideo) {
-      alert("Kripya video file (MP4, WEBM, MOV) select karein!");
-      return;
-    }
-
-    let uploadedUrl = "";
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/social/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success && data.url) {
-        uploadedUrl = data.url;
-      }
-    } catch (err) {
-      console.warn("Card upload err:", err);
-    }
-
-    if (!uploadedUrl) {
-      try {
-        uploadedUrl = URL.createObjectURL(file);
-      } catch {}
-    }
-
-    if (uploadedUrl) {
-      try {
-        const updateRes = await fetch("/api/social/ai-daily-posts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "update_post",
-            postId,
-            updatedFields: {
-              mediaType: "video",
-              mediaUrl: uploadedUrl,
-            },
-          }),
-        });
-        const updateData = await updateRes.json();
-        if (updateData.success && updateData.posts) {
-          setPosts(updateData.posts);
-          alert("✓ Video successfully add ho gayi!");
-        }
-      } catch (err) {
-        console.warn("Update post err:", err);
-      }
-    }
-  };
-
   // 5-Second Video Previewer State (Track active playing post)
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [videoProgress, setVideoProgress] = useState<{ [postId: string]: number }>({});
   const progressTimerRef = useRef<any>(null);
 
-  // Active Tab: 'daily' (Today's 5 Posts) vs 'history' (Approved Posts Archive)
+  // Active Tab: 'daily' (Today's Posts) vs 'history' (Approved Posts Archive)
   const [activeTab, setActiveTab] = useState<"daily" | "approved">("daily");
-
   const [archivePosts, setArchivePosts] = useState<AIPost[]>([]);
 
-  // Fetch initial posts & config
+  // Fetch initial posts & config from Supabase backend
   const fetchPostsAndConfig = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/social/ai-daily-posts");
+      const res = await fetch(`/api/social/ai-daily-posts?userId=${encodeURIComponent(currentUserId || "admin_1")}`);
       const data = await res.json();
       if (data.success) {
         if (data.posts && Array.isArray(data.posts)) {
@@ -230,6 +182,8 @@ export default function AIPostCreator({
         if (data.config) {
           setHasApiKey(data.config.hasApiKey);
           setApiKeyMasked(data.config.apiKeyMasked || "");
+          setAiProvider(data.config.provider || "gemini");
+          setAiModel(data.config.model || "gemini-1.5-flash");
           setBrandNameInput(data.config.brandName || "Anant Reach");
           setBusinessNicheInput(
             data.config.businessNiche ||
@@ -246,12 +200,11 @@ export default function AIPostCreator({
 
   useEffect(() => {
     fetchPostsAndConfig();
-  }, []);
+  }, [currentUserId]);
 
   // 5-Second Video Player Timer Controller
   useEffect(() => {
     if (playingVideoId) {
-      // 5-second animation countdown timer (50ms interval = 100 ticks)
       const startTime = Date.now();
       const durationMs = 5000;
 
@@ -265,7 +218,6 @@ export default function AIPostCreator({
         }));
 
         if (pct >= 100) {
-          // Loop or pause
           setTimeout(() => {
             setVideoProgress((prev) => ({ ...prev, [playingVideoId]: 0 }));
           }, 400);
@@ -288,7 +240,7 @@ export default function AIPostCreator({
     }
   };
 
-  // Save Gemini API Config
+  // Save AI Config to Supabase Database
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingConfig(true);
@@ -300,14 +252,18 @@ export default function AIPostCreator({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save_config",
+          userId: currentUserId || "admin_1",
+          provider: aiProvider,
+          model: aiModel,
           apiKey: apiKeyInput,
           brandName: brandNameInput,
           businessNiche: businessNicheInput,
+          language: formLanguage,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setConfigSuccessMsg("🎉 Gemini API Key successfully connected & saved!");
+        setConfigSuccessMsg(`🎉 ${aiProvider.toUpperCase()} API Key Supabase Database me save ho gayi!`);
         setHasApiKey(data.config.hasApiKey);
         setApiKeyMasked(data.config.apiKeyMasked || "");
         setTimeout(() => setShowConfigModal(false), 1500);
@@ -321,56 +277,65 @@ export default function AIPostCreator({
     }
   };
 
-  // Test Gemini Key Connection
-  const handleTestGeminiKey = async () => {
+  // Test AI Key Connection Live
+  const handleTestKey = async () => {
     if (!apiKeyInput.trim() && !hasApiKey) {
-      alert("Kripya pehle Gemini API Key enter karein!");
+      alert("Kripya pehle AI API Key enter karein!");
       return;
     }
-    setTestResult("Testing connection with Google Gemini 1.5 Flash...");
+    setIsTestingKey(true);
+    setTestResult(`Testing connection with ${aiProvider.toUpperCase()} (${aiModel})...`);
     try {
-      const keyToTest = apiKeyInput.trim();
-      const testRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keyToTest}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: "Say 'Gemini Active' in 2 words." }] }],
-          }),
-        }
-      );
-      const testData = await testRes.json();
-      if (testData.candidates?.[0]?.content?.parts?.[0]?.text) {
-        setTestResult("✅ Google Gemini API Connection Verified! Model: Gemini 1.5 Flash");
-      } else if (testData.error) {
-        setTestResult(`❌ Error: ${testData.error.message}`);
+      const res = await fetch("/api/social/ai-daily-posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "test_key",
+          provider: aiProvider,
+          apiKey: apiKeyInput.trim(),
+          model: aiModel,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestResult(data.message || "✅ API Connection Verified!");
       } else {
-        setTestResult("❌ Could not verify API key");
+        setTestResult(`❌ Error: ${data.error || "API verification failed"}`);
       }
     } catch (e: any) {
       setTestResult(`❌ Connection Error: ${e.message}`);
+    } finally {
+      setIsTestingKey(false);
     }
   };
 
-  // Generate 5 Fresh Posts with Gemini
-  const handleGenerate5Posts = async () => {
+  // Generate Custom Posts Batch (User's Form Handler)
+  const handleGenerateCustomBatch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsGenerating(true);
     try {
       const res = await fetch("/api/social/ai-daily-posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "generate_daily_5",
+          action: "generate_custom_batch",
+          userId: currentUserId || "admin_1",
+          title: formTitle.trim(),
+          description: formDescription.trim(),
+          attachmentType: formAttachmentType,
+          postCount: formPostCount,
+          tone: formTone,
+          language: formLanguage,
           brandName: brandNameInput,
           businessNiche: businessNicheInput,
-          customTopic: customTopic.trim(),
+          provider: aiProvider,
+          model: aiModel,
         }),
       });
       const data = await res.json();
       if (data.success && data.posts) {
         setPosts(data.posts);
-        alert("🎉 Google Gemini ne aaj ke 5 viral posts & reels successfully generate kar diye!");
+        alert(data.message || `🎉 AI ne ${data.posts.length} posts successfully create kar diye!`);
       } else {
         alert(data.error || "Generation error");
       }
@@ -378,28 +343,6 @@ export default function AIPostCreator({
       alert(`Generation failed: ${e.message}`);
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  // Approve a single post for user's channel ("jismai se mai koi ek post approve karuna")
-  const handleApprovePost = async (postId: string) => {
-    try {
-      const res = await fetch("/api/social/ai-daily-posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "approve_post",
-          postId,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.posts) {
-        setPosts(data.posts);
-        const approved = data.posts.find((p: any) => p.id === postId);
-        alert(`⭐ '${approved?.title || "Post"}' ko aaj ke liye channel par APPROVE kar diya gaya hai! Ab aap ise Publish kar sakte hain.`);
-      }
-    } catch (e: any) {
-      alert(`Approval error: ${e.message}`);
     }
   };
 
@@ -419,7 +362,6 @@ export default function AIPostCreator({
       const isVideoReel = post.mediaType === "video";
       const targetPlatforms = ["instagram", "facebook"];
 
-      // 1. Direct call to /api/social/publish
       const res = await fetch("/api/social/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -439,7 +381,6 @@ export default function AIPostCreator({
       const pubData = await res.json();
 
       if (pubData.success && pubData.successCount > 0) {
-        // 2. Mark post as approved & published in state and persistence
         await fetch("/api/social/ai-daily-posts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -489,7 +430,7 @@ export default function AIPostCreator({
     }
   };
 
-  // Open Edit Modal for a post ("Mai khud bhi isma change kar saku")
+  // Open Edit Modal for a post
   const handleOpenEditModal = (post: AIPost) => {
     setEditingPost(post);
     setEditTitle(post.title);
@@ -541,6 +482,44 @@ export default function AIPostCreator({
     }
   };
 
+  // Delete a single post
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm("Kya aap is post ko delete karna chahte hain?")) return;
+    try {
+      const res = await fetch("/api/social/ai-daily-posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_post", postId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPosts(data.posts || []);
+      }
+    } catch (e: any) {
+      console.warn("Delete post error:", e);
+    }
+  };
+
+  // Clear all posts (delete all dummy or generated posts)
+  const handleClearAllPosts = async () => {
+    if (!confirm("Kya aap sach me sabhi posts ko delete karna chahte hain?")) return;
+    try {
+      const res = await fetch("/api/social/ai-daily-posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear_all_posts" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPosts([]);
+        setArchivePosts([]);
+        alert("✓ Sabhi posts successfully delete ho gaye!");
+      }
+    } catch (e: any) {
+      console.warn("Clear all posts error:", e);
+    }
+  };
+
   const approvedPost = posts.find((p) => p.isApproved);
   const currentApproved = posts.filter((p) => p.isApproved || p.isPublished);
   const approvedHistory = [
@@ -548,7 +527,6 @@ export default function AIPostCreator({
     ...archivePosts.filter((a) => !currentApproved.some((c) => c.id === a.id)),
   ];
 
-  // Background gradient map for 5-sec video player themes
   const themeGradients: { [key: string]: string } = {
     "gradient-pulse": "from-purple-900 via-indigo-900 to-pink-900",
     "luxury-gold": "from-amber-950 via-yellow-900 to-stone-900",
@@ -557,13 +535,13 @@ export default function AIPostCreator({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-16">
       {/* =========================================================================
-          HERO BANNER: AI POST CREATOR & GEMINI STATUS
+          HERO BANNER: AI POST CREATOR & SUPABASE DATABASE KEY STATUS
           ========================================================================= */}
-      <div className="bg-[#111827] border-2 border-purple-500/50 rounded-3xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
-        {/* Glow backdrop */}
+      <div className="bg-gradient-to-br from-slate-900/90 via-[#13132e]/80 to-slate-900/90 border border-purple-500/25 rounded-3xl p-5 sm:p-7 backdrop-blur-xl shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-pink-600/5 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 relative z-10">
           <div className="flex items-center gap-4">
@@ -572,42 +550,45 @@ export default function AIPostCreator({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                  🟢 Daily Auto-Pilot Active • Kal Waps 5 Naye Posts Auto-Create Honge
+                <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  AI Post Studio Active
                 </span>
                 {hasApiKey ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-300 text-[11px] font-mono font-bold flex items-center gap-1">
-                    <span>⚡</span> Gemini Key Active ({apiKeyMasked || "Connected"})
+                  <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-400/30 text-purple-300 text-[11px] font-mono font-medium flex items-center gap-1">
+                    <span>⚡</span> {aiProvider.toUpperCase()} Key Active ({apiKeyMasked || "Saved in DB"})
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold flex items-center gap-1">
-                    <span>⚠️</span> API Key Required
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[11px] font-medium flex items-center gap-1">
+                    <span>⚠️</span> AI Key Optional (Fallback Ready)
                   </span>
                 )}
+                <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-400/30 text-indigo-300 text-[11px] font-medium flex items-center gap-1">
+                  <span>💾</span> Supabase DB Sync
+                </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-                <span>✨</span> AI Daily Auto Post & 5-Second Reel Studio
+              <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2 tracking-tight">
+                <span>✨</span> AI Multi-Post & 5-Second Reel Creator
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl font-medium">
-                Gemini AI se roz auto 5 posts & 5-second video reels banayein. Unme se koi ek post apne channel ke liye approve aur modify karein!
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl font-normal leading-relaxed">
+                Apna Post Title, Description, Attachment Type (Image ya Video) aur Count select karein — AI turant high-converting posts aur 5-sec reels create karega!
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-center">
             <button
               onClick={() => setShowConfigModal(true)}
-              className="px-4 py-2.5 bg-[#1a233a] hover:bg-slate-800 text-purple-200 hover:text-white border-2 border-purple-500/40 hover:border-purple-400 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md active:scale-95"
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white border border-purple-400/40 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md active:scale-95"
             >
-              <span>⚙️</span>
-              <span>{hasApiKey ? "Update Gemini Key" : "Connect Gemini API Key"}</span>
+              <span>🔑</span>
+              <span>{hasApiKey ? "Manage AI API Key (DB)" : "Connect AI Key (Supabase)"}</span>
             </button>
 
             {onNavigateToPostStudio && (
               <button
                 onClick={onNavigateToPostStudio}
-                className="px-4 py-2.5 bg-[#0f172a] hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-slate-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
               >
                 <span>✍️</span>
                 <span>Manual Post Studio</span>
@@ -615,29 +596,228 @@ export default function AIPostCreator({
             )}
           </div>
         </div>
+      </div>
 
-        {/* Quick Topic & Refresh Control */}
-        <div className="mt-5 pt-4 border-t border-slate-700/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm">🎯</span>
-            <input
-              type="text"
-              placeholder="Custom topic ya offer daalein (optional: e.g. Festive Offer, Monday Motivation, New Feature)..."
-              value={customTopic}
-              onChange={(e) => setCustomTopic(e.target.value)}
-              className="w-full bg-[#070b14] border-2 border-slate-700 focus:border-purple-400 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-400 focus:outline-none transition"
-            />
+      {/* =========================================================================
+          POST CREATION FORM (TITLE, DESCRIPTION, ATTACHMENT, COUNT)
+          ========================================================================= */}
+      <div className="bg-[#0e1424]/90 border-2 border-indigo-500/30 rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/50 flex items-center justify-center text-xl">
+              ✍️
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                Create Posts with AI Form
+                <span className="text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full uppercase">
+                  Custom Batch
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Kripya details bharein: Title, Description, Attachment Type aur kitne posts chahiye:
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={handleGenerate5Posts}
-            disabled={isGenerating}
-            className="px-5 py-2.5 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 hover:from-purple-500 hover:to-pink-500 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-purple-950/60 active:scale-95 shrink-0"
-          >
-            <span className={isGenerating ? "animate-spin" : ""}>⚡</span>
-            <span>{isGenerating ? "Gemini Generating 5 Posts..." : "Generate 5 Fresh Posts Now"}</span>
-          </button>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium">
+            <span>Powered by:</span>
+            <span className="text-white font-bold bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 font-mono">
+              {aiProvider === "gemini" ? "Google Gemini 1.5 Flash" : "OpenAI GPT-4o"}
+            </span>
+          </div>
         </div>
+
+        <form onSubmit={handleGenerateCustomBatch} className="space-y-5">
+          {/* 1. Post Title */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>📌</span>
+                <span>Post Title kya hona chahiye? (Topic / Headline):</span>
+              </label>
+              <span className="text-[10px] text-slate-400">Required</span>
+            </div>
+            <input
+              type="text"
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.target.value)}
+              placeholder="e.g. Diwali Mega Sale 50% Off, Top 5 Real Estate Tips, New Gym Membership Offer..."
+              className="w-full bg-[#070b14] border-2 border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none transition"
+              required
+            />
+
+            {/* Quick Topic Suggestion Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <span className="text-[10px] font-bold text-slate-400 mr-1">Quick Ideas:</span>
+              {[
+                "🎁 50% Flat Mega Sale",
+                "🚀 New Product Launch",
+                "💡 5 Growth Hacks for Businesses",
+                "🔥 Monday Motivation Hustle",
+                "⭐ Customer Success Story",
+              ].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => setFormTitle(chip)}
+                  className="text-[10px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1 rounded-lg border border-slate-700 transition cursor-pointer"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. Post Description */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>📝</span>
+                <span>Description / Details (Kya details ya offer include karni hai?):</span>
+              </label>
+              <span className="text-[10px] text-slate-400">Context / Prompt</span>
+            </div>
+            <textarea
+              rows={3}
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              placeholder="e.g. Limited period offer till Sunday, free home delivery across India, use code SAVE50, comment 'OFFER' for VIP link, target young entrepreneurs..."
+              className="w-full bg-[#070b14] border-2 border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl p-3.5 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none transition leading-relaxed"
+            ></textarea>
+          </div>
+
+          {/* 3. Attachment Selection & Post Count Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+            {/* Attachment Type: Image ya Video */}
+            <div>
+              <label className="text-xs font-bold text-white block mb-2 flex items-center gap-1.5">
+                <span>📎</span>
+                <span>Attachment kya chahiye? (Image ya Video):</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormAttachmentType("image")}
+                  className={`p-3 rounded-2xl border-2 text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    formAttachmentType === "image"
+                      ? "bg-purple-950/80 border-purple-400 text-white font-black shadow-lg shadow-purple-950/50"
+                      : "bg-[#070b14] border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-2xl">🖼️</span>
+                  <div className="text-xs font-bold">Image</div>
+                  <div className="text-[10px] text-slate-400">Photo Post</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormAttachmentType("video")}
+                  className={`p-3 rounded-2xl border-2 text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    formAttachmentType === "video"
+                      ? "bg-purple-950/80 border-purple-400 text-white font-black shadow-lg shadow-purple-950/50"
+                      : "bg-[#070b14] border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-2xl">🎬</span>
+                  <div className="text-xs font-bold">Video</div>
+                  <div className="text-[10px] text-purple-300">5-Sec Reel</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormAttachmentType("mix")}
+                  className={`p-3 rounded-2xl border-2 text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    formAttachmentType === "mix"
+                      ? "bg-indigo-950/80 border-indigo-400 text-white font-black shadow-lg shadow-indigo-950/50"
+                      : "bg-[#070b14] border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-2xl">🔀</span>
+                  <div className="text-xs font-bold">Mix</div>
+                  <div className="text-[10px] text-slate-400">Image + Reel</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Post Count Selection: kitne post create karne hai */}
+            <div>
+              <label className="text-xs font-bold text-white block mb-2 flex items-center gap-1.5">
+                <span>🔢</span>
+                <span>Kitne post create karne hai? (Select Count):</span>
+              </label>
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                {[1, 2, 3, 5, 10].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setFormPostCount(num)}
+                    className={`py-3 px-1 rounded-2xl border-2 text-center transition cursor-pointer flex flex-col items-center justify-center ${
+                      formPostCount === num
+                        ? "bg-gradient-to-b from-indigo-600 to-purple-700 border-indigo-300 text-white font-black shadow-lg shadow-indigo-950/60 scale-105"
+                        : "bg-[#070b14] border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                    }`}
+                  >
+                    <span className="text-base font-black font-mono">{num}</span>
+                    <span className="text-[9px] uppercase tracking-wider">{num === 1 ? "Post" : "Posts"}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1.5 text-right font-medium">
+                {formPostCount === 5 ? "⭐ 5 Posts: Best for weekly social planning" : `${formPostCount} unique posts will be generated`}
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Tone & Language Options */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-1">Content Tone / Mood:</label>
+              <select
+                value={formTone}
+                onChange={(e) => setFormTone(e.target.value)}
+                className="w-full bg-[#070b14] border-2 border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              >
+                <option value="viral">🔥 Viral Hook & High Engagement</option>
+                <option value="promotional">🛍️ Sales & Limited Period Offer</option>
+                <option value="professional">💼 Professional & Corporate Growth</option>
+                <option value="festive">🎉 Festive Celebration & Wishes</option>
+                <option value="educational">💡 Educational Tips & Value Guide</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-1">Language Style:</label>
+              <select
+                value={formLanguage}
+                onChange={(e) => setFormLanguage(e.target.value)}
+                className="w-full bg-[#070b14] border-2 border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              >
+                <option value="hinglish">Hinglish (Hindi + English - Most Engaging for India)</option>
+                <option value="hindi">Pure Hindi (हिंदी भाषा)</option>
+                <option value="english">Professional English</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 5. Big Submit Button */}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isGenerating}
+              className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-black rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-purple-950/60 active:scale-98 disabled:opacity-50"
+            >
+              <span className={`text-base ${isGenerating ? "animate-spin" : ""}`}>
+                {isGenerating ? "⏳" : "✨"}
+              </span>
+              <span>
+                {isGenerating
+                  ? `AI is Generating ${formPostCount} Posts & Reels with Captions...`
+                  : `Generate ${formPostCount} Posts with AI Now 🚀`}
+              </span>
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* =========================================================================
@@ -652,7 +832,7 @@ export default function AIPostCreator({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black uppercase tracking-wider text-amber-300">
-                  Approved For Today's Channel:
+                  Approved For Channel:
                 </span>
                 <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold font-mono">
                   Post #{approvedPost.postNum}
@@ -715,49 +895,64 @@ export default function AIPostCreator({
       )}
 
       {/* =========================================================================
-          VIEW SWITCHER TABS: TODAY'S 5 POSTS vs APPROVED ARCHIVE
+          VIEW SWITCHER TABS: GENERATED POSTS vs APPROVED ARCHIVE
           ========================================================================= */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-900/60 border border-slate-800/80 rounded-2xl backdrop-blur-sm">
           <button
             onClick={() => setActiveTab("daily")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
               activeTab === "daily"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-950/60"
-                : "text-slate-300 hover:text-white bg-slate-900 border border-slate-800"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-950/40"
+                : "text-slate-400 hover:text-white"
             }`}
           >
-            <span>📅 Today's 5 Daily AI Posts</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-full font-mono">5</span>
+            <span>📅 Generated Posts</span>
+            <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-full font-mono font-bold">
+              {posts.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab("approved")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
               activeTab === "approved"
-                ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-950/60"
-                : "text-slate-300 hover:text-white bg-slate-900 border border-slate-800"
+                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-md shadow-amber-950/40"
+                : "text-slate-400 hover:text-white"
             }`}
           >
-            <span>⭐ Channel Approved & Published</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-full font-mono">
+            <span>⭐ Approved & Published Archive</span>
+            <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-full font-mono font-bold">
               {approvedHistory.length}
             </span>
           </button>
         </div>
 
-        <div className="text-xs font-mono font-bold text-slate-400 hidden sm:block">
-          Select & Approve Any 1 Post For Today's Channel
+        <div className="flex items-center gap-2">
+          {posts.length > 0 && activeTab === "daily" && (
+            <button
+              type="button"
+              onClick={handleClearAllPosts}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-300 hover:text-white bg-rose-950/50 hover:bg-rose-900/80 border border-rose-500/40 transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm"
+            >
+              <span>🗑️</span>
+              <span>Delete All Posts</span>
+            </button>
+          )}
+          <div className="text-xs font-medium text-slate-400 hidden sm:flex items-center gap-1.5">
+            <span>💡</span>
+            <span>1-Click Publish direct Meta Graph API se Instagram & Facebook par live bhejta hai</span>
+          </div>
         </div>
       </div>
 
       {/* =========================================================================
-          CARDS GRID: 5 DAILY AI POSTS (WITH 5-SEC VIDEO REELS & IMAGES)
+          CARDS GRID: GENERATED AI POSTS (WITH 5-SEC VIDEO REELS & IMAGES)
           ========================================================================= */}
       {isLoading ? (
         <div className="p-12 text-center bg-[#111827] rounded-3xl border-2 border-slate-800">
           <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          <div className="text-sm font-bold text-slate-200">Gemini AI Posts Load Ho Rahe Hain...</div>
+          <div className="text-sm font-bold text-slate-200">AI Posts Load Ho Rahe Hain...</div>
         </div>
       ) : activeTab === "approved" ? (
         /* Approved Posts Tab */
@@ -767,7 +962,7 @@ export default function AIPostCreator({
               <div className="text-3xl mb-2">⭐</div>
               <div className="text-sm font-bold text-slate-200">Abhi tak koi post approve nahi hui hai.</div>
               <p className="text-xs text-slate-400 mt-1">
-                "Today's 5 Daily AI Posts" tab me se kisi ek post par "Approve for My Channel" click karein!
+                "Generated Posts" tab me se kisi ek post par "Publish to FB & Instagram" click karein!
               </p>
             </div>
           ) : (
@@ -800,7 +995,7 @@ export default function AIPostCreator({
                         </span>
                       ) : (
                         <span className="text-[10px] bg-yellow-500/20 text-yellow-300 font-bold px-2 py-0.5 rounded-full">
-                          ⭐ Approved (Pending Publish)
+                          ⭐ Approved
                         </span>
                       )}
                     </div>
@@ -816,6 +1011,13 @@ export default function AIPostCreator({
                   >
                     ✏️ Edit
                   </button>
+                  <button
+                    onClick={() => handleDeletePost(post.id)}
+                    className="px-3 py-2 bg-rose-950/50 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-500/40 rounded-xl text-xs font-bold transition cursor-pointer"
+                    title="Delete post"
+                  >
+                    🗑️
+                  </button>
                   {!post.isPublished && (
                     <button
                       onClick={() => handleApproveAndPublish(post.id)}
@@ -830,8 +1032,19 @@ export default function AIPostCreator({
             ))
           )}
         </div>
+      ) : posts.length === 0 ? (
+        /* Clean Empty State when no posts created yet or all dummy posts deleted */
+        <div className="p-12 sm:p-16 text-center bg-[#0e1424]/80 rounded-3xl border-2 border-dashed border-slate-800 backdrop-blur-md space-y-3">
+          <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-3xl mx-auto shadow-inner">
+            📭
+          </div>
+          <h3 className="text-base font-bold text-white">Abhi koi post create nahi hui hai</h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+            Upar diye gaye form me <strong>Post Title</strong>, <strong>Description</strong>, <strong>Attachment (Image ya Video)</strong> aur <strong>Count</strong> select karein aur <strong>"Generate Posts with AI Now"</strong> par click karein!
+          </p>
+        </div>
       ) : (
-        /* Daily 5 Posts Grid */
+        /* Generated Posts Grid */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {posts.map((post) => {
             const isPlaying = playingVideoId === post.id;
@@ -842,21 +1055,21 @@ export default function AIPostCreator({
             return (
               <div
                 key={post.id}
-                className={`bg-[#111827] rounded-3xl p-5 shadow-2xl transition-all border-2 relative flex flex-col justify-between ${
+                className={`bg-slate-900/60 backdrop-blur-md rounded-3xl p-5 sm:p-6 shadow-xl transition-all duration-300 border relative flex flex-col justify-between ${
                   post.isApproved
-                    ? "border-amber-400 bg-gradient-to-b from-[#18182b] to-[#121829] ring-2 ring-amber-400/30"
-                    : "border-slate-700/80 hover:border-purple-500/50"
+                    ? "border-amber-400/80 bg-gradient-to-b from-[#18182b]/80 to-[#121829]/80 shadow-amber-950/20 ring-1 ring-amber-400/30"
+                    : "border-slate-800/80 hover:border-purple-500/40 hover:shadow-2xl hover:shadow-purple-950/20"
                 }`}
               >
-                {/* Header: Post Number & Tag */}
                 <div>
+                  {/* Header: Post Number & Tag */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-xl bg-purple-600 text-white font-mono font-black text-xs flex items-center justify-center shadow-md">
+                      <span className="w-7 h-7 rounded-xl bg-purple-600/90 text-white font-mono font-bold text-xs flex items-center justify-center shadow-md shadow-purple-900/30">
                         #{post.postNum}
                       </span>
                       <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 bg-purple-950/80 border border-purple-500/40 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-950/60 border border-purple-500/30 px-2.5 py-0.5 rounded-full">
                           {post.tag}
                         </span>
                       </div>
@@ -864,17 +1077,17 @@ export default function AIPostCreator({
 
                     <div className="flex items-center gap-1.5">
                       {isVideo ? (
-                        <span className="text-[10px] font-black bg-gradient-to-r from-pink-600 to-purple-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="text-[10px] font-bold bg-gradient-to-r from-pink-600 to-purple-600 text-white px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
                           <span>🎬</span> 5s Reel Video
                         </span>
                       ) : (
-                        <span className="text-[10px] font-black bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 border border-slate-700/60 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                           <span>🖼️</span> Image Post
                         </span>
                       )}
 
                       {post.isApproved && (
-                        <span className="text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-400/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                           <span>👑</span> Approved
                         </span>
                       )}
@@ -882,16 +1095,13 @@ export default function AIPostCreator({
                   </div>
 
                   {/* Post Title */}
-                  <h3 className="text-base font-black text-white leading-snug mb-3">{post.title}</h3>
+                  <h3 className="text-base font-bold text-white leading-snug mb-3 tracking-tight">{post.title}</h3>
 
-                  {/* =====================================================================
-                      MEDIA DISPLAY: 5-SECOND VIDEO REEL SIMULATOR vs IMAGE PREVIEW
-                      ===================================================================== */}
+                  {/* Media Display: 5-Second Video Reel Simulator vs Image Preview */}
                   <div className="mb-4">
                     {isVideo ? (
-                      /* 5-Second Short Video / Reel Simulator */
-                      <div className="relative rounded-2xl overflow-hidden border-2 border-purple-500/40 bg-black aspect-[16/10] sm:aspect-[16/9] shadow-inner group">
-                        {/* Background Media */}
+                      /* 5-Second Video Reel Simulator */
+                      <div className="relative rounded-2xl overflow-hidden border border-purple-500/30 bg-black aspect-[16/10] sm:aspect-[16/9] shadow-inner group">
                         {post.mediaUrl && (post.mediaUrl.match(/\.(mp4|webm|mov)$/i) || post.mediaUrl.startsWith("data:video/") || post.mediaUrl.includes("commondatastorage") || post.mediaUrl.includes("reel_video")) ? (
                           <video
                             src={post.mediaUrl}
@@ -913,26 +1123,23 @@ export default function AIPostCreator({
                           />
                         )}
 
-                        {/* Animated Gradient Overlay */}
                         <div
                           className={`absolute inset-0 bg-gradient-to-t ${themeGradient} opacity-75 mix-blend-multiply`}
                         ></div>
 
                         {/* Reel Motion Graphics & Typography Overlay */}
                         <div className="absolute inset-0 flex flex-col justify-between p-4 z-10">
-                          {/* Top bar: Reel Badge & Duration */}
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-black text-white bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1.5 border border-white/20">
+                            <span className="text-[10px] font-mono font-bold text-white bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/20">
                               <span className={`w-2 h-2 rounded-full ${isPlaying ? "bg-red-500 animate-ping" : "bg-purple-400"}`}></span>
                               <span>00:{String(Math.floor((progress / 100) * 5)).padStart(2, "0")} / 00:05 REEL</span>
                             </span>
 
-                            <span className="text-[10px] font-bold text-white bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/20 flex items-center gap-1">
-                              <span>🎵</span> Trending Audio
+                            <span className="text-[10px] font-bold text-white bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1">
+                              <span>🎵</span> Audio Sync
                             </span>
                           </div>
 
-                          {/* Center: Punchy Video Hook Text */}
                           <div className="my-auto text-center px-4">
                             <div
                               className={`text-base sm:text-lg font-black text-white drop-shadow-lg tracking-tight whitespace-pre-line transition-all duration-300 ${
@@ -946,18 +1153,16 @@ export default function AIPostCreator({
                             </div>
                           </div>
 
-                          {/* Bottom: Play Controller & Equalizer */}
                           <div>
                             <div className="flex items-center justify-between gap-3 mb-2">
                               <button
                                 type="button"
                                 onClick={() => handleTogglePlay(post.id)}
-                                className="px-3 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-white/30 active:scale-95"
+                                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-white/30 active:scale-95"
                               >
                                 <span>{isPlaying ? "⏸ Pause" : "▶ Play 5s Reel"}</span>
                               </button>
 
-                              {/* Equalizer animation */}
                               <div className="flex items-center gap-1 h-3">
                                 {[40, 75, 100, 60, 90, 45].map((h, i) => (
                                   <div
@@ -969,7 +1174,6 @@ export default function AIPostCreator({
                               </div>
                             </div>
 
-                            {/* 5-Second Progress Bar */}
                             <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden backdrop-blur-sm">
                               <div
                                 style={{ width: `${progress}%` }}
@@ -981,7 +1185,7 @@ export default function AIPostCreator({
                       </div>
                     ) : (
                       /* Standard Image Post Preview */
-                      <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700 bg-slate-950 aspect-[16/10] sm:aspect-[16/9] shadow-inner group">
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 aspect-[16/10] sm:aspect-[16/9] shadow-inner group">
                         <img src={post.mediaUrl} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 p-3 flex flex-col justify-between">
                           <span className="self-end text-[10px] bg-black/70 backdrop-blur-md text-slate-200 px-2 py-0.5 rounded-md font-mono font-bold border border-white/10">
@@ -996,49 +1200,27 @@ export default function AIPostCreator({
                   </div>
 
                   {/* Caption & Hashtags Preview */}
-                  <div className="bg-[#070b14] border border-slate-800 rounded-2xl p-3.5 mb-4 space-y-2">
-                    <div className="text-xs text-slate-200 whitespace-pre-line leading-relaxed max-h-28 overflow-y-auto font-normal">
+                  <div className="space-y-2 mb-4">
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line bg-[#070b14]/60 p-3.5 rounded-2xl border border-slate-800/80 max-h-36 overflow-y-auto">
                       {post.caption}
-                    </div>
-                    <div className="text-[11px] font-mono text-purple-300 font-bold break-words pt-2 border-t border-slate-800">
+                    </p>
+                    <div className="text-[11px] text-purple-300/90 font-mono break-words leading-tight bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
                       {post.hashtags}
                     </div>
                   </div>
                 </div>
 
-                {/* Bottom Action Controls: Edit, Approve & Publish */}
-                <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2">
-                    {/* User Edit Button */}
+                {/* Footer Action Buttons */}
+                <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(post)}
-                      className="px-3 py-2 bg-[#1a233a] hover:bg-slate-800 text-slate-200 border border-slate-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-slate-700 active:scale-95 flex items-center gap-1"
                     >
                       <span>✏️</span>
                       <span>Edit</span>
                     </button>
-
-                    {/* Direct Add Video Button */}
-                    <label
-                      htmlFor={`card-video-upload-${post.id}`}
-                      className="px-2.5 py-2 bg-purple-950/80 hover:bg-purple-900 border border-purple-500/50 text-purple-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
-                      title="Direct video upload from computer"
-                    >
-                      <span>🎬</span>
-                      <span className="hidden sm:inline">Add Video</span>
-                    </label>
-                    <input
-                      id={`card-video-upload-${post.id}`}
-                      type="file"
-                      accept="video/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleCardVideoUpload(post.id, file);
-                        e.target.value = "";
-                      }}
-                      className="hidden"
-                    />
 
                     {onNavigateToPostStudio && (
                       <button
@@ -1048,50 +1230,46 @@ export default function AIPostCreator({
                             caption: `${post.caption}\n\n${post.hashtags}`,
                             mediaUrl: post.mediaUrl,
                             mediaType: post.mediaType,
-                            postFormat: post.mediaType === "video" ? "reel" : "feed",
+                            postFormat: isVideo ? "reel" : "feed",
                           })
                         }
-                        className="px-2.5 py-2 bg-[#0c1322] hover:bg-slate-800 text-indigo-300 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                        title="Open in Multi-Channel Post Studio"
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-slate-700 active:scale-95 flex items-center gap-1"
                       >
                         <span>✍️</span>
-                        <span className="hidden sm:inline">Post Studio</span>
+                        <span>Post Studio</span>
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePost(post.id)}
+                      className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/70 text-rose-300 hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-rose-500/30 active:scale-95 flex items-center gap-1"
+                      title="Delete this post"
+                    >
+                      <span>🗑️</span>
+                    </button>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Approve For Channel Button */}
-                    {!post.isApproved ? (
-                      <button
-                        type="button"
-                        onClick={() => handleApprovePost(post.id)}
-                        className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-950/40 active:scale-95"
-                      >
-                        <span>⭐</span>
-                        <span>Approve for Channel</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleApproveAndPublish(post.id)}
-                        disabled={publishingPostId === post.id || post.isPublished}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-md ${
-                          post.isPublished
-                            ? "bg-emerald-600 text-white cursor-default"
-                            : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-950/40"
-                        }`}
-                      >
-                        <span>{publishingPostId === post.id ? "⏳" : post.isPublished ? "✓" : "🚀"}</span>
-                        <span>
-                          {publishingPostId === post.id
-                            ? "Publishing..."
-                            : post.isPublished
-                            ? "Published Live!"
-                            : "Publish to FB & Insta"}
-                        </span>
-                      </button>
-                    )}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleApproveAndPublish(post.id)}
+                      disabled={publishingPostId === post.id || post.isPublished}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 ${
+                        post.isPublished
+                          ? "bg-emerald-800 text-white cursor-default"
+                          : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-950/40"
+                      }`}
+                    >
+                      <span>{publishingPostId === post.id ? "⏳" : post.isPublished ? "✓" : "🚀"}</span>
+                      <span>
+                        {publishingPostId === post.id
+                          ? "Publishing..."
+                          : post.isPublished
+                          ? "Published Live!"
+                          : "Publish to FB & Insta"}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1101,20 +1279,20 @@ export default function AIPostCreator({
       )}
 
       {/* =========================================================================
-          MODAL 1: GEMINI API KEY & BRAND SETTINGS MODAL
+          MODAL 1: AI API KEY & PROVIDER SETTINGS (SUPABASE INTEGRATED)
           ========================================================================= */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border-2 border-purple-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-fadeIn">
-            <div className="flex items-start justify-between">
+          <div className="bg-[#111827] border-2 border-purple-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="flex items-start justify-between pb-2 border-b border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/50 flex items-center justify-center text-xl">
                   🔑
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white">Google Gemini API Configuration</h3>
+                  <h3 className="text-base font-black text-white">AI API Key Configuration</h3>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    Enter your Gemini API key to power daily auto 5 posts and 5s video reels:
+                    Per-user API key save karein (Supabase Database me store hogi):
                   </p>
                 </div>
               </div>
@@ -1133,50 +1311,133 @@ export default function AIPostCreator({
             )}
 
             <form onSubmit={handleSaveConfig} className="space-y-4">
+              {/* Provider Selector: Google Gemini vs OpenAI */}
+              <div>
+                <label className="text-xs font-bold text-white block mb-1.5">Choose AI Provider:</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiProvider("gemini");
+                      setAiModel("gemini-1.5-flash");
+                    }}
+                    className={`p-3 rounded-xl border-2 text-left transition cursor-pointer flex items-center gap-2.5 ${
+                      aiProvider === "gemini"
+                        ? "bg-purple-950/80 border-purple-400 text-white font-bold"
+                        : "bg-[#070b14] border-slate-800 text-slate-400"
+                    }`}
+                  >
+                    <span className="text-xl">✨</span>
+                    <div>
+                      <div className="text-xs font-bold text-white">Google Gemini</div>
+                      <div className="text-[10px] text-purple-300">Free & Fast Key</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiProvider("openai");
+                      setAiModel("gpt-4o-mini");
+                    }}
+                    className={`p-3 rounded-xl border-2 text-left transition cursor-pointer flex items-center gap-2.5 ${
+                      aiProvider === "openai"
+                        ? "bg-purple-950/80 border-purple-400 text-white font-bold"
+                        : "bg-[#070b14] border-slate-800 text-slate-400"
+                    }`}
+                  >
+                    <span className="text-xl">🧠</span>
+                    <div>
+                      <div className="text-xs font-bold text-white">OpenAI ChatGPT</div>
+                      <div className="text-[10px] text-slate-400">GPT-4o Mini / GPT-4o</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* API Key Input */}
               <div>
                 <label className="text-xs font-bold text-white block mb-1">
-                  Gemini API Key: <span className="text-rose-400">*</span>
+                  {aiProvider === "gemini" ? "Google Gemini API Key:" : "OpenAI API Key:"}
                 </label>
                 <input
                   type="password"
-                  placeholder={hasApiKey ? `Current: ${apiKeyMasked}` : "AIzaSy..."}
+                  placeholder={hasApiKey ? `Current: ${apiKeyMasked}` : aiProvider === "gemini" ? "AIzaSy..." : "sk-proj-..."}
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
                   className="w-full bg-[#070b14] border-2 border-slate-700 focus:border-purple-400 rounded-xl p-3 text-xs text-white placeholder:text-slate-500 font-mono focus:outline-none"
                 />
                 <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400">
-                  <span>Get free key from Google AI Studio</span>
-                  <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-purple-400 hover:underline font-bold"
-                  >
-                    Open AI Studio ↗
-                  </a>
+                  {aiProvider === "gemini" ? (
+                    <>
+                      <span>Google AI Studio se Free API key lein</span>
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-purple-400 hover:underline font-bold"
+                      >
+                        Open AI Studio ↗
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <span>OpenAI platform developer key</span>
+                      <a
+                        href="https://platform.openai.com/api-keys"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-purple-400 hover:underline font-bold"
+                      >
+                        OpenAI Platform ↗
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
 
+              {/* Model Choice */}
               <div>
-                <label className="text-xs font-bold text-white block mb-1">Brand / Channel Name:</label>
-                <input
-                  type="text"
-                  value={brandNameInput}
-                  onChange={(e) => setBrandNameInput(e.target.value)}
-                  placeholder="e.g. Anant Reach"
-                  className="w-full bg-[#070b14] border-2 border-slate-700 focus:border-purple-400 rounded-xl p-2.5 text-xs text-white focus:outline-none"
-                />
+                <label className="text-xs font-bold text-white block mb-1">AI Model:</label>
+                <select
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  className="w-full bg-[#070b14] border-2 border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none font-mono"
+                >
+                  {aiProvider === "gemini" ? (
+                    <>
+                      <option value="gemini-1.5-flash">gemini-1.5-flash (Fast & Recommended)</option>
+                      <option value="gemini-2.0-flash">gemini-2.0-flash (Next-Gen)</option>
+                      <option value="gemini-1.5-pro">gemini-1.5-pro (High Accuracy)</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="gpt-4o-mini">gpt-4o-mini (Fast & Affordable)</option>
+                      <option value="gpt-4o">gpt-4o (Flagship Model)</option>
+                    </>
+                  )}
+                </select>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-white block mb-1">Business Niche / Focus:</label>
-                <input
-                  type="text"
-                  value={businessNicheInput}
-                  onChange={(e) => setBusinessNicheInput(e.target.value)}
-                  placeholder="e.g. Fashion, Electronics, Real Estate, Consulting"
-                  className="w-full bg-[#070b14] border-2 border-slate-700 focus:border-purple-400 rounded-xl p-2.5 text-xs text-white focus:outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-white block mb-1">Brand Name:</label>
+                  <input
+                    type="text"
+                    value={brandNameInput}
+                    onChange={(e) => setBrandNameInput(e.target.value)}
+                    className="w-full bg-[#070b14] border-2 border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-white block mb-1">Business Niche:</label>
+                  <input
+                    type="text"
+                    value={businessNicheInput}
+                    onChange={(e) => setBusinessNicheInput(e.target.value)}
+                    className="w-full bg-[#070b14] border-2 border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none"
+                  />
+                </div>
               </div>
 
               {testResult && (
@@ -1188,17 +1449,18 @@ export default function AIPostCreator({
               <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={handleTestGeminiKey}
+                  onClick={handleTestKey}
+                  disabled={isTestingKey}
                   className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
-                  ⚡ Test Key
+                  {isTestingKey ? "Testing..." : "⚡ Test Key Live"}
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingConfig}
                   className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black rounded-xl text-xs transition cursor-pointer shadow-lg shadow-purple-950/60"
                 >
-                  {isSavingConfig ? "Saving..." : "Save Gemini Key & Config"}
+                  {isSavingConfig ? "Saving to Database..." : "💾 Save to Supabase Database"}
                 </button>
               </div>
             </form>
@@ -1207,7 +1469,7 @@ export default function AIPostCreator({
       )}
 
       {/* =========================================================================
-          MODAL 2: USER EDIT & CUSTOMIZATION MODAL ("Mai khud bhi isma change kar saku")
+          MODAL 2: USER EDIT & CUSTOMIZATION MODAL
           ========================================================================= */}
       {editingPost && (
         <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
@@ -1246,7 +1508,7 @@ export default function AIPostCreator({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-white block mb-1">Content Category / Tag:</label>
+                  <label className="text-xs font-bold text-white block mb-1">Category / Tag:</label>
                   <input
                     type="text"
                     value={editTag}
@@ -1257,7 +1519,6 @@ export default function AIPostCreator({
                 </div>
               </div>
 
-              {/* Format Switcher: Image Post vs 5s Video Reel */}
               <div>
                 <label className="text-xs font-bold text-white block mb-1.5">Post Format:</label>
                 <div className="grid grid-cols-2 gap-3">
@@ -1295,7 +1556,6 @@ export default function AIPostCreator({
                 </div>
               </div>
 
-              {/* 5-Sec Video Reel Specific Controls */}
               {editMediaType === "video" && (
                 <div className="p-4 bg-slate-950 border border-purple-500/40 rounded-2xl space-y-3">
                   <div>
@@ -1315,7 +1575,7 @@ export default function AIPostCreator({
                     <label className="text-xs font-bold text-slate-300 block mb-1">Reel Motion Theme:</label>
                     <select
                       value={editVideoTheme}
-                      onChange={(e) => setEditVideoTheme(e.target.value)}
+                      onChange={(e) => setEditVideoTheme(e.target.value as any)}
                       className="w-full bg-[#070b14] border-2 border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none"
                     >
                       <option value="gradient-pulse">Gradient Pulse (Purple / Neon)</option>
@@ -1327,7 +1587,6 @@ export default function AIPostCreator({
                 </div>
               )}
 
-              {/* Caption */}
               <div>
                 <label className="text-xs font-bold text-white block mb-1">Caption / Message:</label>
                 <textarea
@@ -1339,7 +1598,6 @@ export default function AIPostCreator({
                 ></textarea>
               </div>
 
-              {/* Hashtags */}
               <div>
                 <label className="text-xs font-bold text-white block mb-1">Hashtags:</label>
                 <input
@@ -1360,12 +1618,11 @@ export default function AIPostCreator({
                   {isUploadingEditMedia && (
                     <span className="text-[11px] font-bold text-pink-400 flex items-center gap-1 animate-pulse">
                       <span className="w-2 h-2 rounded-full bg-pink-400"></span>
-                      Uploading video...
+                      Uploading...
                     </span>
                   )}
                 </div>
 
-                {/* Upload File From Computer Button */}
                 <div className="flex flex-col sm:flex-row items-center gap-2.5">
                   <label
                     htmlFor="edit-media-file-input"
@@ -1386,7 +1643,6 @@ export default function AIPostCreator({
                   />
                 </div>
 
-                {/* 1-Click 5-Sec Video Reel Presets (If video mode) */}
                 {editMediaType === "video" && (
                   <div className="space-y-1.5">
                     <div className="text-[11px] font-bold text-purple-300">Ya 1-Click Ready 5-Sec Reel Video Select Karein:</div>
@@ -1397,7 +1653,7 @@ export default function AIPostCreator({
                           type="button"
                           onClick={() => {
                             setEditMediaUrl(preset.url);
-                            setEditVideoTheme(preset.theme);
+                            setEditVideoTheme(preset.theme as any);
                           }}
                           className={`p-2 rounded-xl text-[11px] font-bold text-left border transition cursor-pointer flex items-center justify-between ${
                             editMediaUrl === preset.url
@@ -1413,7 +1669,6 @@ export default function AIPostCreator({
                   </div>
                 )}
 
-                {/* Live Video / Image Playable Preview */}
                 {editMediaUrl && (
                   <div className="relative rounded-2xl overflow-hidden border-2 border-purple-500/50 bg-black aspect-video max-h-44 shadow-lg group">
                     {editMediaType === "video" || editMediaUrl.match(/\.(mp4|webm|mov)$/i) || editMediaUrl.startsWith("data:video/") || editMediaUrl.includes("commondatastorage") || editMediaUrl.includes("reel_video") ? (
@@ -1438,18 +1693,6 @@ export default function AIPostCreator({
                     </span>
                   </div>
                 )}
-
-                {/* Secondary URL Input */}
-                <div>
-                  <label className="text-[11px] text-slate-400 block mb-1">Direct Media URL (Optional):</label>
-                  <input
-                    type="text"
-                    value={editMediaUrl}
-                    onChange={(e) => setEditMediaUrl(e.target.value)}
-                    placeholder="https://... ya /uploads/..."
-                    className="w-full bg-[#070b14] border border-slate-700 focus:border-indigo-400 rounded-xl p-2 text-xs text-white font-mono focus:outline-none"
-                  />
-                </div>
               </div>
 
               <div className="flex items-center gap-3 pt-3 border-t border-slate-800">
