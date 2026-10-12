@@ -7,9 +7,6 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
 
     const contentType = request.headers.get("content-type") || "";
 
@@ -36,9 +33,17 @@ export async function POST(request: Request) {
 
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      fs.writeFileSync(filePath, buffer);
+      let publicUrl = `/uploads/${filename}`;
 
-      const publicUrl = `/uploads/${filename}`;
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, buffer);
+      } catch (err: any) {
+        // Fallback for Vercel Serverless read-only filesystem
+        publicUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+      }
 
       return NextResponse.json({
         success: true,
@@ -67,12 +72,21 @@ export async function POST(request: Request) {
       const filename = `${prefix}_${Date.now()}.${ext}`;
       const filePath = path.join(uploadsDir, filename);
 
+      let publicUrl = `/uploads/${filename}`;
       const buffer = Buffer.from(matches[2], "base64");
-      fs.writeFileSync(filePath, buffer);
+
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, buffer);
+      } catch (err: any) {
+        publicUrl = dataUrl;
+      }
 
       return NextResponse.json({
         success: true,
-        url: `/uploads/${filename}`,
+        url: publicUrl,
         mediaType: isVideo ? "video" : "image",
         mimeType,
         name: reqFilename,

@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { fetchUserSocialAccounts, fetchUserAiConfig, saveUserAiConfig, recordActivityLog } from "@/lib/supabase";
 
-const POSTS_PATH = path.join(process.cwd(), "data", "ai_daily_posts.json");
-
-// Helper to ensure data dir exists
-function ensureDataDir() {
-  const dir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+// Resolves file storage path safely for Vercel/Serverless (/tmp) and Local (data/)
+function getStoragePath(filename: string): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), filename);
+  }
+  return path.join(process.cwd(), "data", filename);
 }
 
 interface DailyDataStore {
@@ -18,40 +19,102 @@ interface DailyDataStore {
   lastUpdated?: string;
 }
 
-// Get saved daily posts and archive history
+// Memory fallback to survive container lifespan even if filesystem is read-only
+let memoryDailyStore: DailyDataStore = {
+  posts: [],
+  archive: [],
+  lastDate: "",
+  lastUpdated: "",
+};
+
+// Get saved daily posts and archive history safely
 function getDailyPostsData(): DailyDataStore {
-  ensureDataDir();
-  if (fs.existsSync(POSTS_PATH)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(POSTS_PATH, "utf-8"));
-      return {
+  if (memoryDailyStore.posts && memoryDailyStore.posts.length > 0) {
+    return memoryDailyStore;
+  }
+
+  // 1. Try reading from designated storage path (/tmp on Vercel, data/ locally)
+  const targetPath = getStoragePath("ai_daily_posts.json");
+  try {
+    if (fs.existsSync(targetPath)) {
+      const data = JSON.parse(fs.readFileSync(targetPath, "utf-8"));
+      memoryDailyStore = {
         posts: Array.isArray(data.posts) ? data.posts : [],
         archive: Array.isArray(data.archive) ? data.archive : [],
         lastDate: data.lastDate || (data.posts?.[0]?.createdAt?.split("T")[0]) || "",
         lastUpdated: data.lastUpdated || "",
       };
+      return memoryDailyStore;
+    }
+  } catch {}
+
+  // 2. Fallback: try checking /tmp if target was different
+  const tmpPath = path.join(os.tmpdir(), "ai_daily_posts.json");
+  if (tmpPath !== targetPath) {
+    try {
+      if (fs.existsSync(tmpPath)) {
+        const data = JSON.parse(fs.readFileSync(tmpPath, "utf-8"));
+        memoryDailyStore = {
+          posts: Array.isArray(data.posts) ? data.posts : [],
+          archive: Array.isArray(data.archive) ? data.archive : [],
+          lastDate: data.lastDate || (data.posts?.[0]?.createdAt?.split("T")[0]) || "",
+          lastUpdated: data.lastUpdated || "",
+        };
+        return memoryDailyStore;
+      }
     } catch {}
   }
-  return { posts: [], archive: [], lastDate: "", lastUpdated: "" };
+
+  // 3. Fallback: check project data/ directory if bundled at build time
+  const bundledPath = path.join(process.cwd(), "data", "ai_daily_posts.json");
+  if (bundledPath !== targetPath) {
+    try {
+      if (fs.existsSync(bundledPath)) {
+        const data = JSON.parse(fs.readFileSync(bundledPath, "utf-8"));
+        memoryDailyStore = {
+          posts: Array.isArray(data.posts) ? data.posts : [],
+          archive: Array.isArray(data.archive) ? data.archive : [],
+          lastDate: data.lastDate || (data.posts?.[0]?.createdAt?.split("T")[0]) || "",
+          lastUpdated: data.lastUpdated || "",
+        };
+        return memoryDailyStore;
+      }
+    } catch {}
+  }
+
+  return memoryDailyStore;
 }
 
-// Save daily posts and archive history
+// Save daily posts and archive history safely without throwing EROFS
 function saveDailyPostsData(data: DailyDataStore) {
-  ensureDataDir();
-  fs.writeFileSync(
-    POSTS_PATH,
-    JSON.stringify(
-      {
-        posts: data.posts,
-        archive: data.archive || [],
-        lastDate: data.lastDate || new Date().toISOString().split("T")[0],
-        lastUpdated: new Date().toISOString(),
-      },
-      null,
-      2
-    ),
-    "utf-8"
-  );
+  memoryDailyStore = {
+    posts: Array.isArray(data.posts) ? data.posts : [],
+    archive: Array.isArray(data.archive) ? data.archive : [],
+    lastDate: data.lastDate || new Date().toISOString().split("T")[0],
+    lastUpdated: new Date().toISOString(),
+  };
+
+  const payload = JSON.stringify(memoryDailyStore, null, 2);
+
+  // 1. Try writing to primary storage path (/tmp on Vercel, data/ locally)
+  try {
+    const targetPath = getStoragePath("ai_daily_posts.json");
+    const dir = path.dirname(targetPath);
+    if (!fs.existsSync(dir)) {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch {}
+    }
+    fs.writeFileSync(targetPath, payload, "utf-8");
+  } catch (err: any) {
+    // If EROFS or permission denied on process.cwd(), write to /tmp!
+    try {
+      const fallbackTmp = path.join(os.tmpdir(), "ai_daily_posts.json");
+      fs.writeFileSync(fallbackTmp, payload, "utf-8");
+    } catch (tmpErr: any) {
+      console.warn("Storage fallback notice (non-fatal):", tmpErr.message);
+    }
+  }
 }
 
 function getDailyPosts(): any[] {

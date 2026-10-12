@@ -51,3 +51,5 @@ data/*.json
 !data/*.example.json
 public/uploads/*
 !public/uploads/.gitkeep
+
+.vercel

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import {
   fetchUserSocialAccounts,
   fetchUserSocialPosts,
@@ -8,21 +9,59 @@ import {
   deleteUserSocialPost,
 } from "@/lib/supabase";
 
-const POSTS_FILE = path.join(process.cwd(), "data", "social_posts.json");
+function getPostsFilePath(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), "social_posts.json");
+  }
+  return path.join(process.cwd(), "data", "social_posts.json");
+}
+
+let inMemoryPosts: any[] = [];
 
 function getAllPosts() {
-  if (!fs.existsSync(POSTS_FILE)) return [];
+  if (inMemoryPosts.length > 0) return inMemoryPosts;
+  const targetFile = getPostsFilePath();
   try {
-    const raw = fs.readFileSync(POSTS_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return parsed.posts || [];
-  } catch {
-    return [];
+    if (fs.existsSync(targetFile)) {
+      const raw = fs.readFileSync(targetFile, "utf-8");
+      const parsed = JSON.parse(raw);
+      inMemoryPosts = parsed.posts || [];
+      return inMemoryPosts;
+    }
+  } catch {}
+
+  // Fallback check bundled path
+  const bundledFile = path.join(process.cwd(), "data", "social_posts.json");
+  if (bundledFile !== targetFile) {
+    try {
+      if (fs.existsSync(bundledFile)) {
+        const raw = fs.readFileSync(bundledFile, "utf-8");
+        const parsed = JSON.parse(raw);
+        inMemoryPosts = parsed.posts || [];
+        return inMemoryPosts;
+      }
+    } catch {}
   }
+  return inMemoryPosts;
 }
 
 function saveAllPosts(posts: any[]) {
-  fs.writeFileSync(POSTS_FILE, JSON.stringify({ posts }, null, 2), "utf-8");
+  inMemoryPosts = posts;
+  try {
+    const targetFile = getPostsFilePath();
+    const dir = path.dirname(targetFile);
+    if (!fs.existsSync(dir)) {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch {}
+    }
+    fs.writeFileSync(targetFile, JSON.stringify({ posts }, null, 2), "utf-8");
+  } catch (e: any) {
+    try {
+      const tmpFile = path.join(os.tmpdir(), "social_posts.json");
+      fs.writeFileSync(tmpFile, JSON.stringify({ posts }, null, 2), "utf-8");
+    } catch {}
+  }
 }
 
 export async function GET(request: Request) {
