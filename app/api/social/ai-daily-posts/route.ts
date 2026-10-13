@@ -261,13 +261,23 @@ async function callGeminiApi({
   prompt: string;
   preferredModel?: string;
 }) {
-  const models = preferredModel
-    ? [preferredModel, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
-    : ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+  const modernModels = [
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-flash-latest",
+  ];
+
+  const candidateModels = [
+    ...(preferredModel && !preferredModel.includes("1.5") && !preferredModel.includes("2.0")
+      ? [preferredModel]
+      : []),
+    ...modernModels,
+  ];
 
   let lastErr = "";
 
-  for (const model of Array.from(new Set(models))) {
+  for (const model of Array.from(new Set(candidateModels))) {
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -554,7 +564,10 @@ export async function POST(request: Request) {
         }
       } else {
         // Google Gemini
-        const testModel = model || "gemini-1.5-flash";
+        const testModel =
+          model && !model.includes("1.5") && !model.includes("2.0")
+            ? model
+            : "gemini-3.1-flash-lite";
         try {
           const res = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${cleanKey}`,

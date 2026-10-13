@@ -57,7 +57,7 @@ export default function AIPostCreator({
   // AI API Key & Provider Config State (Supabase Integrated)
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
   const [aiProvider, setAiProvider] = useState<"gemini" | "openai">("gemini");
-  const [aiModel, setAiModel] = useState<string>("gemini-1.5-flash");
+  const [aiModel, setAiModel] = useState<string>("gemini-3.1-flash-lite");
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const [brandNameInput, setBrandNameInput] = useState<string>("Anant Reach");
   const [businessNicheInput, setBusinessNicheInput] = useState<string>(
@@ -1406,9 +1406,10 @@ export default function AIPostCreator({
                 >
                   {aiProvider === "gemini" ? (
                     <>
-                      <option value="gemini-1.5-flash">gemini-1.5-flash (Fast & Recommended)</option>
-                      <option value="gemini-2.0-flash">gemini-2.0-flash (Next-Gen)</option>
-                      <option value="gemini-1.5-pro">gemini-1.5-pro (High Accuracy)</option>
+                      <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Ultra Fast & Recommended ⚡)</option>
+                      <option value="gemini-3.5-flash">gemini-3.5-flash (Balanced & High Quality)</option>
+                      <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Model 🚀)</option>
+                      <option value="gemini-flash-latest">gemini-flash-latest (Auto Latest)</option>
                     </>
                   ) : (
                     <>
