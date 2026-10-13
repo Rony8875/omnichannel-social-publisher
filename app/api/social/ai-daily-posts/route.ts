@@ -2,7 +2,17 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { fetchUserSocialAccounts, fetchUserAiConfig, saveUserAiConfig, recordActivityLog } from "@/lib/supabase";
+import {
+  fetchUserSocialAccounts,
+  fetchUserAiConfig,
+  saveUserAiConfig,
+  recordActivityLog,
+  saveUserAiPosts,
+  fetchUserAiPosts,
+  deleteUserAiPost,
+  clearAllUserAiPosts,
+  updateUserAiPost,
+} from "@/lib/supabase";
 
 // Resolves file storage path safely for Vercel/Serverless (/tmp) and Local (data/)
 function getStoragePath(filename: string): string {
@@ -441,8 +451,15 @@ export async function GET(request: Request) {
 
     const config = await fetchUserAiConfig(userId);
     const today = new Date().toISOString().split("T")[0];
+
+    // 1. Fetch AI posts directly from Supabase database
+    let posts = await fetchUserAiPosts(userId);
+
+    // 2. If no posts in Supabase yet, fallback to memory / local storage
     const data = getDailyPostsData();
-    const posts = data.posts || [];
+    if (!posts || posts.length === 0) {
+      posts = data.posts || [];
+    }
 
     return NextResponse.json({
       success: true,
@@ -571,7 +588,9 @@ export async function POST(request: Request) {
     if (action === "generate_custom_batch" || action === "generate_daily_5") {
       const userConfig = await fetchUserAiConfig(userId);
 
-      const activeApiKey = body.apiKey ? body.apiKey.trim() : userConfig.apiKey;
+      const activeApiKey = body.apiKey
+        ? body.apiKey.trim()
+        : (userConfig.apiKey || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || "");
       const provider = body.provider || userConfig.provider || "gemini";
       const model = body.model || userConfig.model || "gemini-1.5-flash";
       const brand = body.brandName || userConfig.brandName || "Anant Reach";
@@ -642,6 +661,13 @@ export async function POST(request: Request) {
         lastUpdated: new Date().toISOString(),
       });
 
+      // Save all generated AI posts directly into Supabase database (social_posts table)!
+      try {
+        await saveUserAiPosts(userId, generatedPosts);
+      } catch (sbErr: any) {
+        console.warn("Notice saving AI posts to Supabase:", sbErr?.message);
+      }
+
       // Record activity log to Supabase
       recordActivityLog(
         userId,
@@ -677,6 +703,9 @@ export async function POST(request: Request) {
       };
       saveDailyPosts(posts);
 
+      // Sync update to Supabase
+      await updateUserAiPost(userId, postId, updatedFields);
+
       return NextResponse.json({
         success: true,
         message: "Post successfully update ho gayi!",
@@ -697,6 +726,9 @@ export async function POST(request: Request) {
         archive: updatedArchive,
       });
 
+      // Sync delete to Supabase
+      await deleteUserAiPost(userId, postId);
+
       return NextResponse.json({
         success: true,
         message: "Post successfully delete ho gayi!",
@@ -712,6 +744,9 @@ export async function POST(request: Request) {
         lastDate: new Date().toISOString().split("T")[0],
         lastUpdated: new Date().toISOString(),
       });
+
+      // Clear all AI posts from Supabase
+      await clearAllUserAiPosts(userId);
 
       recordActivityLog(userId, "POSTS_CLEARED", "User cleared all dummy/daily posts").catch(() => {});
 
@@ -735,6 +770,9 @@ export async function POST(request: Request) {
         }
       });
       saveDailyPosts(posts);
+
+      // Sync approve status to Supabase
+      await updateUserAiPost(userId, postId, { isApproved: true });
 
       return NextResponse.json({
         success: true,
@@ -798,6 +836,13 @@ export async function POST(request: Request) {
       post.publishedAt = new Date().toISOString();
       post.publishResults = publishResult.results;
       saveDailyPosts(posts);
+
+      // Sync published status to Supabase
+      await updateUserAiPost(userId, postId, {
+        isApproved: true,
+        isPublished: true,
+        publishedAt: post.publishedAt,
+      });
 
       return NextResponse.json({
         success: true,

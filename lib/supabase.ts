@@ -458,6 +458,198 @@ export async function deleteUserSocialPost(userId: string, postId: string) {
 }
 
 /**
+ * Helper to encode AIPost object into a strict public.social_posts table row
+ */
+export function encodeAiPostToRow(post: any, userId: string = "admin_1") {
+  const postId = isValidUUID(post.id) ? post.id : crypto.randomUUID();
+  const meta = {
+    postNum: post.postNum || 1,
+    tag: post.tag || "AI Post",
+    title: post.title || "",
+    hashtags: post.hashtags || "",
+    videoTheme: post.videoTheme || "gradient-pulse",
+    videoText: post.videoText || "",
+    videoDuration: post.videoDuration || 5,
+    isApproved: Boolean(post.isApproved),
+    isPublished: Boolean(post.isPublished),
+    publishedAt: post.publishedAt || null,
+  };
+
+  const captionWithMeta = `<!--AI_META:${JSON.stringify(meta)}-->\n${post.caption || ""}`;
+
+  return {
+    id: postId,
+    user_id: userId,
+    caption: captionWithMeta,
+    media_url: post.mediaUrl || post.media_url || null,
+    media_type: post.mediaType || post.media_type || "image",
+    platforms: Array.isArray(post.platforms) ? post.platforms : ["instagram", "facebook"],
+    status: post.isPublished ? "PUBLISHED" : post.isApproved ? "APPROVED" : "AI_GENERATED",
+    created_at: post.createdAt || new Date().toISOString(),
+  };
+}
+
+/**
+ * Helper to decode public.social_posts table row back into rich AIPost format
+ */
+export function decodeRowToAiPost(row: any) {
+  let caption = row.caption || "";
+  let meta: any = {};
+
+  const match = caption.match(/<!--AI_META:([\s\S]*?)-->\n?/);
+  if (match) {
+    try {
+      meta = JSON.parse(match[1]);
+      caption = caption.replace(match[0], "");
+    } catch {}
+  }
+
+  return {
+    id: row.id,
+    postNum: meta.postNum || 1,
+    tag: meta.tag || (row.media_type === "video" ? "⚡ 5-Sec Motion Reel" : "🔥 Viral Post"),
+    title: meta.title || caption.slice(0, 45) + (caption.length > 45 ? "..." : ""),
+    caption: caption,
+    hashtags: meta.hashtags || "#BusinessGrowth #MarketingTips #ViralPost",
+    mediaType: row.media_type === "video" ? ("video" as const) : ("image" as const),
+    videoDuration: meta.videoDuration || 5,
+    videoTheme: meta.videoTheme || "gradient-pulse",
+    videoText: meta.videoText || meta.title || "",
+    mediaUrl: row.media_url || "",
+    platforms: Array.isArray(row.platforms) ? row.platforms : ["instagram", "facebook"],
+    isApproved: meta.isApproved !== undefined ? meta.isApproved : row.status === "APPROVED" || row.status === "PUBLISHED",
+    isPublished: meta.isPublished !== undefined ? meta.isPublished : row.status === "PUBLISHED",
+    publishedAt: meta.publishedAt || (row.status === "PUBLISHED" ? row.created_at : undefined),
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Save multiple AI-generated posts directly to Supabase social_posts table
+ */
+export async function saveUserAiPosts(userId: string, aiPosts: any[]) {
+  const cleanUserId = userId || "admin_1";
+  const supabase = getSupabaseClient();
+  if (!supabase || !Array.isArray(aiPosts) || aiPosts.length === 0) return aiPosts;
+
+  try {
+    for (const post of aiPosts) {
+      const row = encodeAiPostToRow(post, cleanUserId);
+      const { data: existing } = await supabase
+        .from("social_posts")
+        .select("id")
+        .eq("id", row.id)
+        .maybeSingle();
+
+      if (existing && existing.id) {
+        await supabase.from("social_posts").update(row).eq("id", row.id);
+      } else {
+        await supabase.from("social_posts").insert(row);
+      }
+      post.id = row.id;
+    }
+
+    recordActivityLog(
+      cleanUserId,
+      "AI_POSTS_SAVED_DB",
+      `Saved ${aiPosts.length} AI-generated posts directly to Supabase database`
+    ).catch(() => {});
+  } catch (err: any) {
+    console.warn("Supabase saveUserAiPosts notice:", err.message);
+  }
+
+  return aiPosts;
+}
+
+/**
+ * Fetch all AI-generated posts for user directly from Supabase social_posts table
+ */
+export async function fetchUserAiPosts(userId: string) {
+  const cleanUserId = userId || "admin_1";
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from("social_posts")
+      .select("*")
+      .eq("user_id", cleanUserId)
+      .like("caption", "%AI_META%")
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(decodeRowToAiPost);
+    }
+  } catch (err: any) {
+    console.warn("Supabase fetchUserAiPosts notice:", err.message);
+  }
+
+  return [];
+}
+
+/**
+ * Delete a specific AI post from Supabase
+ */
+export async function deleteUserAiPost(userId: string, postId: string) {
+  const cleanUserId = userId || "admin_1";
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    await supabase.from("social_posts").delete().eq("user_id", cleanUserId).eq("id", postId);
+  } catch (err: any) {
+    console.warn("Supabase deleteUserAiPost notice:", err.message);
+  }
+}
+
+/**
+ * Clear all AI posts from Supabase for this user
+ */
+export async function clearAllUserAiPosts(userId: string) {
+  const cleanUserId = userId || "admin_1";
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    await supabase
+      .from("social_posts")
+      .delete()
+      .eq("user_id", cleanUserId)
+      .like("caption", "%AI_META%");
+  } catch (err: any) {
+    console.warn("Supabase clearAllUserAiPosts notice:", err.message);
+  }
+}
+
+/**
+ * Update an existing AI post in Supabase
+ */
+export async function updateUserAiPost(userId: string, postId: string, updatedFields: any) {
+  const cleanUserId = userId || "admin_1";
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    const { data: existing } = await supabase
+      .from("social_posts")
+      .select("*")
+      .eq("user_id", cleanUserId)
+      .eq("id", postId)
+      .maybeSingle();
+
+    if (existing) {
+      const decoded = decodeRowToAiPost(existing);
+      const updatedPost = { ...decoded, ...updatedFields };
+      const updatedRow = encodeAiPostToRow(updatedPost, cleanUserId);
+      await supabase.from("social_posts").update(updatedRow).eq("id", postId);
+    }
+  } catch (err: any) {
+    console.warn("Supabase updateUserAiPost notice:", err.message);
+  }
+}
+
+/**
  * Fetch Meta Cloud API Credentials for a SPECIFIC USER
  * Reads from Supabase social_accounts (platform: 'whatsapp_meta') with fallback to local JSON
  */
